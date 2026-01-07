@@ -7717,4 +7717,719 @@ task["spawn"](function()
 			L_1_[45]["wt"](100)
 		end)
 	end
+
+end)
+-- ============================================
+-- GRAVITY HUB MODERN UI - By Kaitun
+-- ============================================
+
+-- Удаляем старое GUI если есть
+if game:GetService("CoreGui"):FindFirstChild("GravityHub_Main") then
+    game:GetService("CoreGui").GravityHub_Main:Destroy()
+end
+if game:GetService("CoreGui"):FindFirstChild("GravityHub_Minimized") then
+    game:GetService("CoreGui").GravityHub_Minimized:Destroy()
+end
+
+-- Цвета для радужной обводки
+local RainbowColors = {
+    Color3.fromRGB(255, 0, 0),    -- Красный
+    Color3.fromRGB(255, 127, 0),  -- Оранжевый
+    Color3.fromRGB(255, 255, 0),  -- Желтый
+    Color3.fromRGB(0, 255, 0),    -- Зеленый
+    Color3.fromRGB(0, 0, 255),    -- Синий
+    Color3.fromRGB(75, 0, 130),   -- Индиго
+    Color3.fromRGB(148, 0, 211)   -- Фиолетовый
+}
+
+-- Создаем главное окно
+local MainGUI = Instance.new("ScreenGui")
+MainGUI.Name = "GravityHub_Main"
+MainGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+MainGUI.DisplayOrder = 999
+MainGUI.ResetOnSpawn = false
+
+-- Фон окна
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 400, 0, 450)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -225)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BackgroundTransparency = 0.1
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = MainGUI
+
+-- Скругление углов
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = MainFrame
+
+-- Радужная обводка (анимированная)
+local RainbowStroke = Instance.new("UIStroke")
+RainbowStroke.Name = "RainbowStroke"
+RainbowStroke.Thickness = 3
+RainbowStroke.Color = RainbowColors[1]
+RainbowStroke.Transparency = 0.3
+RainbowStroke.Parent = MainFrame
+
+-- Анимация радужной обводки
+task.spawn(function()
+    local currentColor = 1
+    while task.wait(0.3) do
+        RainbowStroke.Color = RainbowColors[currentColor]
+        currentColor = currentColor + 1
+        if currentColor > #RainbowColors then
+            currentColor = 1
+        end
+    end
+end)
+
+-- Заголовок
+local TitleFrame = Instance.new("Frame")
+TitleFrame.Name = "TitleFrame"
+TitleFrame.Size = UDim2.new(1, 0, 0, 40)
+TitleFrame.Position = UDim2.new(0, 0, 0, 0)
+TitleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TitleFrame.BackgroundTransparency = 0.3
+TitleFrame.BorderSizePixel = 0
+TitleFrame.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 12)
+TitleCorner.Parent = TitleFrame
+
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "⚡ GRAVITY HUB ⚡"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TitleFrame
+
+-- Кнопка закрытия (крестик)
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Size = UDim2.new(0, 30, 0, 30)
+CloseButton.Position = UDim2.new(1, -35, 0, 5)
+CloseButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+CloseButton.BackgroundTransparency = 0.2
+CloseButton.Text = "×"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 24
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Parent = TitleFrame
+
+local CloseButtonCorner = Instance.new("UICorner")
+CloseButtonCorner.CornerRadius = UDim.new(0, 8)
+CloseButtonCorner.Parent = CloseButton
+
+-- Вкладки
+local TabsFrame = Instance.new("Frame")
+TabsFrame.Name = "TabsFrame"
+TabsFrame.Size = UDim2.new(1, -20, 0, 30)
+TabsFrame.Position = UDim2.new(0, 10, 0, 50)
+TabsFrame.BackgroundTransparency = 1
+TabsFrame.Parent = MainFrame
+
+-- Создаем вкладки
+local Tabs = {
+    "Main",
+    "Auto Farm",
+    "Fighting",
+    "Teleports",
+    "Misc"
+}
+
+local TabButtons = {}
+local TabContents = {}
+
+for i, tabName in ipairs(Tabs) do
+    -- Кнопка вкладки
+    local TabButton = Instance.new("TextButton")
+    TabButton.Name = tabName .. "Tab"
+    TabButton.Size = UDim2.new(1/#Tabs, -5, 1, 0)
+    TabButton.Position = UDim2.new((i-1)/#Tabs, 0, 0, 0)
+    TabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    TabButton.BackgroundTransparency = 0.5
+    TabButton.Text = tabName
+    TabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+    TabButton.TextSize = 14
+    TabButton.Font = Enum.Font.Gotham
+    TabButton.Parent = TabsFrame
+    
+    local TabButtonCorner = Instance.new("UICorner")
+    TabButtonCorner.CornerRadius = UDim.new(0, 6)
+    TabButtonCorner.Parent = TabButton
+    
+    -- Контент вкладки
+    local TabContent = Instance.new("ScrollingFrame")
+    TabContent.Name = tabName .. "Content"
+    TabContent.Size = UDim2.new(1, -20, 1, -90)
+    TabContent.Position = UDim2.new(0, 10, 0, 90)
+    TabContent.BackgroundTransparency = 1
+    TabContent.BorderSizePixel = 0
+    TabContent.ScrollBarThickness = 4
+    TabContent.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+    TabContent.Visible = (i == 1) -- Показываем только первую вкладку
+    TabContent.Parent = MainFrame
+    
+    local UIListLayout = Instance.new("UIListLayout")
+    UIListLayout.Padding = UDim.new(0, 10)
+    UIListLayout.Parent = TabContent
+    
+    TabButtons[tabName] = TabButton
+    TabContents[tabName] = TabContent
+    
+    -- Обработчик клика по вкладке
+    TabButton.MouseButton1Click:Connect(function()
+        -- Скрываем все вкладки
+        for _, content in pairs(TabContents) do
+            content.Visible = false
+        end
+        -- Показываем выбранную
+        TabContent.Visible = true
+        
+        -- Меняем цвета кнопок
+        for name, button in pairs(TabButtons) do
+            if name == tabName then
+                button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+                button.TextColor3 = Color3.fromRGB(255, 255, 255)
+            else
+                button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                button.TextColor3 = Color3.fromRGB(200, 200, 200)
+            end
+        end
+    end)
+end
+
+-- ============================================
+-- ФУНКЦИОНАЛЬНЫЕ ЭЛЕМЕНТЫ GUI
+-- ============================================
+
+-- Функция создания переключателя
+local function CreateToggle(name, description, default, callback)
+    local ToggleFrame = Instance.new("Frame")
+    ToggleFrame.Name = name .. "Toggle"
+    ToggleFrame.Size = UDim2.new(1, 0, 0, 50)
+    ToggleFrame.BackgroundTransparency = 1
+    ToggleFrame.Parent = TabContents[description]
+    
+    local ToggleLabel = Instance.new("TextLabel")
+    ToggleLabel.Name = "Label"
+    ToggleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+    ToggleLabel.Position = UDim2.new(0, 0, 0, 0)
+    ToggleLabel.BackgroundTransparency = 1
+    ToggleLabel.Text = name
+    ToggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleLabel.TextSize = 14
+    ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    ToggleLabel.Font = Enum.Font.Gotham
+    ToggleLabel.Parent = ToggleFrame
+    
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Name = "ToggleButton"
+    ToggleButton.Size = UDim2.new(0, 40, 0, 20)
+    ToggleButton.Position = UDim2.new(1, -45, 0.5, -10)
+    ToggleButton.AnchorPoint = Vector2.new(1, 0.5)
+    ToggleButton.BackgroundColor3 = default and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(80, 80, 80)
+    ToggleButton.Text = ""
+    ToggleButton.Parent = ToggleFrame
+    
+    local ToggleCorner = Instance.new("UICorner")
+    ToggleCorner.CornerRadius = UDim.new(0, 10)
+    ToggleCorner.Parent = ToggleButton
+    
+    local ToggleCircle = Instance.new("Frame")
+    ToggleCircle.Name = "Circle"
+    ToggleCircle.Size = UDim2.new(0, 16, 0, 16)
+    ToggleCircle.Position = default and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+    ToggleCircle.AnchorPoint = Vector2.new(1, 0.5)
+    ToggleCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleCircle.Parent = ToggleButton
+    
+    local CircleCorner = Instance.new("UICorner")
+    CircleCorner.CornerRadius = UDim.new(1, 0)
+    CircleCorner.Parent = ToggleCircle
+    
+    local isToggled = default
+    
+    ToggleButton.MouseButton1Click:Connect(function()
+        isToggled = not isToggled
+        if isToggled then
+            TweenService:Create(ToggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(1, -18, 0.5, -8)}):Play()
+            TweenService:Create(ToggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 200, 0)}):Play()
+        else
+            TweenService:Create(ToggleCircle, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0.5, -8)}):Play()
+            TweenService:Create(ToggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+        end
+        callback(isToggled)
+    end)
+    
+    return ToggleFrame
+end
+
+-- Функция создания кнопки
+local function CreateButton(name, callback)
+    local Button = Instance.new("TextButton")
+    Button.Name = name .. "Button"
+    Button.Size = UDim2.new(1, 0, 0, 40)
+    Button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    Button.BackgroundTransparency = 0.3
+    Button.Text = name
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.TextSize = 14
+    Button.Font = Enum.Font.Gotham
+    
+    local ButtonCorner = Instance.new("UICorner")
+    ButtonCorner.CornerRadius = UDim.new(0, 8)
+    ButtonCorner.Parent = Button
+    
+    Button.MouseButton1Click:Connect(callback)
+    
+    return Button
+end
+
+-- Функция создания выпадающего списка
+local function CreateDropdown(name, options, default, callback)
+    local DropdownFrame = Instance.new("Frame")
+    DropdownFrame.Name = name .. "Dropdown"
+    DropdownFrame.Size = UDim2.new(1, 0, 0, 50)
+    DropdownFrame.BackgroundTransparency = 1
+    
+    local DropdownLabel = Instance.new("TextLabel")
+    DropdownLabel.Name = "Label"
+    DropdownLabel.Size = UDim2.new(1, 0, 0, 20)
+    DropdownLabel.BackgroundTransparency = 1
+    DropdownLabel.Text = name
+    DropdownLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownLabel.TextSize = 14
+    DropdownLabel.TextXAlignment = Enum.TextXAlignment.Left
+    DropdownLabel.Font = Enum.Font.Gotham
+    DropdownLabel.Parent = DropdownFrame
+    
+    local DropdownButton = Instance.new("TextButton")
+    DropdownButton.Name = "DropdownButton"
+    DropdownButton.Size = UDim2.new(1, 0, 0, 30)
+    DropdownButton.Position = UDim2.new(0, 0, 0, 20)
+    DropdownButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    DropdownButton.BackgroundTransparency = 0.3
+    DropdownButton.Text = options[default] or options[1]
+    DropdownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownButton.TextSize = 14
+    DropdownButton.Font = Enum.Font.Gotham
+    DropdownButton.Parent = DropdownFrame
+    
+    local DropdownCorner = Instance.new("UICorner")
+    DropdownCorner.CornerRadius = UDim.new(0, 6)
+    DropdownCorner.Parent = DropdownButton
+    
+    local DropdownMenu = Instance.new("Frame")
+    DropdownMenu.Name = "DropdownMenu"
+    DropdownMenu.Size = UDim2.new(1, 0, 0, #options * 30)
+    DropdownMenu.Position = UDim2.new(0, 0, 0, 55)
+    DropdownMenu.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    DropdownMenu.BackgroundTransparency = 0.1
+    DropdownMenu.Visible = false
+    DropdownMenu.Parent = DropdownFrame
+    
+    local MenuCorner = Instance.new("UICorner")
+    MenuCorner.CornerRadius = UDim.new(0, 6)
+    MenuCorner.Parent = DropdownMenu
+    
+    local MenuLayout = Instance.new("UIListLayout")
+    MenuLayout.Parent = DropdownMenu
+    
+    for i, option in ipairs(options) do
+        local OptionButton = Instance.new("TextButton")
+        OptionButton.Name = option .. "Option"
+        OptionButton.Size = UDim2.new(1, 0, 0, 30)
+        OptionButton.BackgroundTransparency = 1
+        OptionButton.Text = option
+        OptionButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+        OptionButton.TextSize = 14
+        OptionButton.Font = Enum.Font.Gotham
+        OptionButton.Parent = DropdownMenu
+        
+        OptionButton.MouseButton1Click:Connect(function()
+            DropdownButton.Text = option
+            DropdownMenu.Visible = false
+            callback(option, i)
+        end)
+    end
+    
+    DropdownButton.MouseButton1Click:Connect(function()
+        DropdownMenu.Visible = not DropdownMenu.Visible
+    end)
+    
+    return DropdownFrame
+end
+
+-- Функция создания слайдера
+local function CreateSlider(name, min, max, default, callback)
+    local SliderFrame = Instance.new("Frame")
+    SliderFrame.Name = name .. "Slider"
+    SliderFrame.Size = UDim2.new(1, 0, 0, 60)
+    SliderFrame.BackgroundTransparency = 1
+    
+    local SliderLabel = Instance.new("TextLabel")
+    SliderLabel.Name = "Label"
+    SliderLabel.Size = UDim2.new(1, 0, 0, 20)
+    SliderLabel.BackgroundTransparency = 1
+    SliderLabel.Text = name .. ": " .. default
+    SliderLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SliderLabel.TextSize = 14
+    SliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+    SliderLabel.Font = Enum.Font.Gotham
+    SliderLabel.Parent = SliderFrame
+    
+    local SliderBar = Instance.new("Frame")
+    SliderBar.Name = "SliderBar"
+    SliderBar.Size = UDim2.new(1, 0, 0, 6)
+    SliderBar.Position = UDim2.new(0, 0, 0, 30)
+    SliderBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    SliderBar.Parent = SliderFrame
+    
+    local BarCorner = Instance.new("UICorner")
+    BarCorner.CornerRadius = UDim.new(1, 0)
+    BarCorner.Parent = SliderBar
+    
+    local SliderFill = Instance.new("Frame")
+    SliderFill.Name = "SliderFill"
+    SliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    SliderFill.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    SliderFill.Parent = SliderBar
+    
+    local FillCorner = Instance.new("UICorner")
+    FillCorner.CornerRadius = UDim.new(1, 0)
+    FillCorner.Parent = SliderFill
+    
+    local SliderButton = Instance.new("TextButton")
+    SliderButton.Name = "SliderButton"
+    SliderButton.Size = UDim2.new(0, 20, 0, 20)
+    SliderButton.Position = UDim2.new((default - min) / (max - min), -10, 0.5, -10)
+    SliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    SliderButton.Text = ""
+    SliderButton.Parent = SliderBar
+    
+    local ButtonCorner = Instance.new("UICorner")
+    ButtonCorner.CornerRadius = UDim.new(1, 0)
+    ButtonCorner.Parent = SliderButton
+    
+    local dragging = false
+    local value = default
+    
+    local function updateValue(mouseX)
+        local relativeX = math.clamp(mouseX - SliderBar.AbsolutePosition.X, 0, SliderBar.AbsoluteSize.X)
+        local percentage = relativeX / SliderBar.AbsoluteSize.X
+        value = math.floor(min + (max - min) * percentage)
+        
+        SliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+        SliderButton.Position = UDim2.new(percentage, -10, 0.5, -10)
+        SliderLabel.Text = name .. ": " .. value
+        
+        callback(value)
+    end
+    
+    SliderButton.MouseButton1Down:Connect(function()
+        dragging = true
+    end)
+    
+    game:GetService("UserInputService").InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateValue(input.Position.X)
+        end
+    end)
+    
+    return SliderFrame
+end
+
+-- ============================================
+-- ЗАПОЛНЯЕМ ВКЛАДКИ ФУНКЦИЯМИ
+-- ============================================
+
+-- Вкладка MAIN
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Name = "StatusLabel"
+StatusLabel.Size = UDim2.new(1, 0, 0, 30)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Status: Ready"
+StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+StatusLabel.TextSize = 16
+StatusLabel.Font = Enum.Font.GothamBold
+StatusLabel.Parent = TabContents.Main
+
+CreateToggle("Enable GUI", "Main", true, function(state)
+    MainGUI.Enabled = state
+    print("GUI Enabled:", state)
+end)
+
+CreateButton("Save Settings", function()
+    print("Settings saved!")
+    StatusLabel.Text = "Status: Settings Saved!"
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+end)
+
+CreateButton("Load Settings", function()
+    print("Settings loaded!")
+    StatusLabel.Text = "Status: Settings Loaded!"
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+end)
+
+-- Вкладка AUTO FARM
+CreateToggle("Auto Farm", "Auto Farm", false, function(state)
+    getgenv().AutoFarm = state
+    print("Auto Farm:", state)
+    if state then
+        -- Здесь будет ваш код авто-фарма
+        L_1_[45]["Status"]("Auto Farm: ON")
+    else
+        L_1_[45]["Status"]("Auto Farm: OFF")
+    end
+end)
+
+CreateToggle("Auto Quest", "Auto Farm", false, function(state)
+    getgenv().AutoQuest = state
+    print("Auto Quest:", state)
+end)
+
+CreateDropdown("Select World", {"First Sea", "Second Sea", "Third Sea"}, 1, function(option)
+    print("Selected World:", option)
+end)
+
+CreateDropdown("Select Mob", {"Bandit", "Monkey", "Gorilla", "Pirate"}, 1, function(option)
+    print("Selected Mob:", option)
+end)
+
+CreateToggle("Auto Collect Drops", "Auto Farm", true, function(state)
+    getgenv().AutoCollect = state
+    print("Auto Collect:", state)
+end)
+
+-- Вкладка FIGHTING
+CreateToggle("Fast Attack", "Fighting", true, function(state)
+    getgenv()["Fast Attack"] = state
+    print("Fast Attack:", state)
+end)
+
+CreateToggle("Auto Click", "Fighting", false, function(state)
+    getgenv().AutoClick = state
+    print("Auto Click:", state)
+end)
+
+CreateToggle("Auto Haki", "Fighting", true, function(state)
+    getgenv().AutoHaki = state
+    print("Auto Haki:", state)
+end)
+
+CreateToggle("No Clip", "Fighting", true, function(state)
+    getgenv().NoClip = state
+    print("No Clip:", state)
+end)
+
+CreateSlider("Attack Distance", 10, 100, 30, function(value)
+    getgenv().AttackDistance = value
+    print("Attack Distance:", value)
+end)
+
+-- Вкладка TELEPORTS
+local TeleportButtons = {
+    {"To Safe Zone", function() L_1_[31](CFrame.new(0, 20, 0), 1.5) end},
+    {"To Boss", function() 
+        if SelectBoss_P then
+            -- Телепорт к выбранному боссу
+            L_1_[45]["Status"]("Teleporting to Boss...")
+        else
+            print("No boss selected!")
+        end
+    end},
+    {"To Island", function() L_1_[31](CFrame.new(0, 100, 0), 1.5) end},
+    {"To Quest", function() 
+        if QuestPos then
+            L_1_[31](QuestPos, 1.5)
+        end
+    end},
+    {"To Player", function()
+        local target = game.Players:FindFirstChild("TargetPlayer")
+        if target and target.Character then
+            L_1_[31](target.Character.HumanoidRootPart.CFrame, 1.5)
+        end
+    end}
+}
+
+for _, buttonData in ipairs(TeleportButtons) do
+    local button = CreateButton(buttonData[1], buttonData[2])
+    button.Parent = TabContents.Teleports
+end
+
+-- Вкладка MISC
+CreateToggle("FPS Booster", "Misc", false, function(state)
+    getgenv().Configs["FPS Booster"] = state
+    print("FPS Booster:", state)
+    if state then
+        -- Включаем оптимизацию FPS
+        L_1_[45]["Status"]("FPS Booster: ON")
+    else
+        L_1_[45]["Status"]("FPS Booster: OFF")
+    end
+end)
+
+CreateToggle("Auto Stats", "Misc", true, function(state)
+    getgenv().AutoStats = state
+    print("Auto Stats:", state)
+end)
+
+CreateToggle("Hide Notifications", "Misc", true, function(state)
+    game.Players.LocalPlayer.PlayerGui.Notifications.Enabled = not state
+    print("Hide Notifications:", state)
+end)
+
+CreateButton("Server Hop", function()
+    L_1_[45]["HopLowServer"](10)
+    print("Server hopping...")
+end)
+
+CreateButton("Rejoin Server", function()
+    game:GetService("TeleportService"):Teleport(game.PlaceId)
+    print("Rejoining server...")
+end)
+
+CreateButton("Copy Discord", function()
+    setclipboard("discord.gg/kaitun")
+    print("Discord link copied!")
+end)
+
+-- ============================================
+-- МИНИМИЗИРООЕ ОКНО
+-- ============================================
+
+local MinimizedGUI = Instance.new("ScreenGui")
+MinimizedGUI.Name = "GravityHub_Minimized"
+MinimizedGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+MinimizedGUI.DisplayOrder = 1000
+MinimizedGUI.ResetOnSpawn = false
+
+local MinimizedButton = Instance.new("TextButton")
+MinimizedButton.Name = "MinimizedButton"
+MinimizedButton.Size = UDim2.new(0, 50, 0, 50)
+MinimizedButton.Position = UDim2.new(0, 20, 0.5, -25)
+MinimizedButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MinimizedButton.BackgroundTransparency = 0.1
+MinimizedButton.Text = "⚡"
+MinimizedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizedButton.TextSize = 24
+MinimizedButton.Font = Enum.Font.GothamBold
+MinimizedButton.Active = true
+MinimizedButton.Draggable = true
+MinimizedButton.Parent = MinimizedGUI
+
+local MinimizedCorner = Instance.new("UICorner")
+MinimizedCorner.CornerRadius = UDim.new(0, 12)
+MinimizedCorner.Parent = MinimizedButton
+
+local MinimizedStroke = Instance.new("UIStroke")
+MinimizedStroke.Thickness = 2
+MinimizedStroke.Color = Color3.fromRGB(100, 100, 255)
+MinimizedStroke.Parent = MinimizedButton
+
+-- Скрываем минимизированное окно по умолчанию
+MinimizedGUI.Enabled = false
+
+-- ============================================
+-- ОБРАБОТЧИКИ СОБЫТИЙ
+-- ============================================
+
+-- Крестик закрытия
+CloseButton.MouseButton1Click:Connect(function()
+    MainGUI.Enabled = false
+    MinimizedGUI.Enabled = true
+end)
+
+-- Кнопка развертывания
+MinimizedButton.MouseButton1Click:Connect(function()
+    MainGUI.Enabled = true
+    MinimizedGUI.Enabled = false
+end)
+
+-- Обновление статуса в реальном времени
+task.spawn(function()
+    while task.wait(1) do
+        if MainGUI.Enabled then
+            local level = L_1_[22] and L_1_[22].Value or 0
+            local beli = L_1_[1] and L_1_[1].Value or 0
+            local frags = L_1_[17] and L_1_[17].Value or 0
+            
+            StatusLabel.Text = string.format("Level: %d | Beli: %s | Frags: %s", 
+                level, 
+                tostring(beli):reverse():gsub("%d%d%d", "%1,"):reverse(),
+                tostring(frags):reverse():gsub("%d%d%d", "%1,"):reverse())
+        end
+    end
+end)
+
+-- ============================================
+-- ФИНАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ
+-- ============================================
+
+-- Привязка к CoreGui
+MainGUI.Parent = game:GetService("CoreGui")
+MinimizedGUI.Parent = game:GetService("CoreGui")
+
+-- Загрузка сохраненных позиций
+local success, saved = pcall(function()
+    return game:GetService("HttpService"):JSONDecode(readfile("GravityHub_Settings.json"))
+end)
+
+if success and saved then
+    MainFrame.Position = UDim2.new(saved.MainX or 0.5, saved.MainY or 0.5)
+    MinimizedButton.Position = UDim2.new(saved.MinX or 0, saved.MinY or 0.5)
+end
+
+-- Сохранение позиций при закрытии
+game:GetService("CoreGui").ChildRemoved:Connect(function(child)
+    if child.Name == "GravityHub_Main" then
+        local settings = {
+            MainX = MainFrame.Position.X.Scale,
+            MainY = MainFrame.Position.Y.Scale,
+            MinX = MinimizedButton.Position.X.Scale,
+            MinY = MinimizedButton.Position.Y.Scale
+        }
+        pcall(function()
+            writefile("GravityHub_Settings.json", game:GetService("HttpService"):JSONEncode(settings))
+        end)
+    end
+end)
+
+-- Анимация появления
+MainFrame.BackgroundTransparency = 1
+TitleFrame.BackgroundTransparency = 1
+for _, child in ipairs(MainFrame:GetChildren()) do
+    if child:IsA("GuiObject") then
+        child.BackgroundTransparency = 1
+    end
+end
+
+task.spawn(function()
+    task.wait(0.5)
+    TweenService:Create(MainFrame, TweenInfo.new(0.5), {BackgroundTransparency = 0.1}):Play()
+    TweenService:Create(TitleFrame, TweenInfo.new(0.5), {BackgroundTransparency = 0.3}):Play()
+    
+    for _, child in ipairs(MainFrame:GetChildren()) do
+        if child:IsA("GuiObject") and child ~= TitleFrame then
+            task.wait(0.05)
+            TweenService:Create(child, TweenInfo.new(0.3), {BackgroundTransparency = child.BackgroundTransparency}):Play()
+        end
+    end
 end)
