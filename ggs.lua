@@ -34,6 +34,8 @@ function DeltaHUD.new()
     self._performanceMode = false
     self._lowFpsCount = 0
     self._lastPerfCheck = 0
+    self._killAuraActive = false
+    self._lastAttackTime = 0
     
     self.settings = {
         ESP = true,
@@ -59,6 +61,10 @@ function DeltaHUD.new()
     self.highlightCache = {}
     self.highlighterConnections = {}
     self._highlightUpdateIndex = 1
+    
+    self._remotesCache = {}
+    self._attackRemote = nil
+    self._hitRemote = nil
     
     getgenv()._DeltaHUDInstance = self
     
@@ -228,6 +234,7 @@ function DeltaHUD:InitializeControls()
     
     self.toggles.KillAura.button.MouseButton1Click:Connect(function()
         self.settings.KillAura = not self.settings.KillAura
+        self._killAuraActive = self.settings.KillAura
         local color = self.settings.KillAura and Color3.fromRGB(50, 200, 100) or Color3.fromRGB(150, 50, 50)
         TweenService:Create(self.toggles.KillAura.indicator, TweenInfo.new(0.2), {BackgroundColor3 = color}):Play()
     end)
@@ -244,39 +251,47 @@ function DeltaHUD:InitializeControls()
         self.controlsGui.Enabled = not self.controlsGui.Enabled
     end)
     
-    local dragToggle
-    local dragStart
-    local startPos
+    self:makeDraggable(main, title)
     
-    title.InputBegan:Connect(function(input)
+    main.Parent = self.controlsGui
+    self.controlsGui.Parent = self.player:WaitForChild("PlayerGui")
+end
+
+function DeltaHUD:makeDraggable(frame, dragHandle)
+    local dragging = false
+    local dragStart = Vector2.new(0,0)
+    local frameStart = Vector2.new(0,0)
+    
+    dragHandle.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragToggle = true
+            dragging = true
             dragStart = input.Position
-            startPos = main.Position
+            frameStart = Vector2.new(frame.Position.X.Offset, frame.Position.Y.Offset)
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
-                    dragToggle = false
+                    dragging = false
                 end
             end)
         end
     end)
     
-    title.InputChanged:Connect(function(input)
+    dragHandle.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
+            local dragInput = input
         end
     end)
     
     UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragToggle then
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
-            main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-                                     startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            frame.Position = UDim2.new(
+                frameStart.X/Workspace.CurrentCamera.ViewportSize.X,
+                frameStart.X + delta.X,
+                frameStart.Y/Workspace.CurrentCamera.ViewportSize.Y,
+                frameStart.Y + delta.Y
+            )
         end
     end)
-    
-    main.Parent = self.controlsGui
-    self.controlsGui.Parent = self.player:WaitForChild("PlayerGui")
 end
 
 function DeltaHUD:InitializeHighlighter()
@@ -360,7 +375,7 @@ function DeltaHUD:_fastUpdate(data, playerPos)
         if data.Highlight then
             data.Highlight.Enabled = true
             if self.highlighterSettings.TeamColor and data.Player.Team then
-                data.Highlight.OutlineColor = data.Player.Team.TeamColor.Color
+                data.Highlight.Color3 = data.Player.Team.TeamColor.Color
             end
         end
         if data.Billboard and data.Billboard.NameText then
@@ -396,6 +411,8 @@ function DeltaHUD:createHighlight(model, player)
     local highlight = Instance.new("BoxHandleAdornment")
     highlight.Name = "PlayerESP"
     highlight.Adornee = model.PrimaryPart or model:WaitForChild("HumanoidRootPart", 2) or model
+    if not highlight.Adornee then return nil end
+    
     highlight.Size = Vector3.new(4, 6, 4)
     highlight.Transparency = 0.7
     highlight.Color3 = self.highlighterSettings.OutlineColor
@@ -577,6 +594,8 @@ function DeltaHUD:Initialize()
         self.sections[i] = {frame=section, title=title, value=value}
     end
     
+    self:makeDraggable(self.mainFrame, self.mainFrame)
+    
     self.mainFrame.Parent = self.screenGui
     self.screenGui.Parent = self.player:WaitForChild("PlayerGui")
     
@@ -663,102 +682,100 @@ function DeltaHUD:UpdateInfo()
     end
 end
 
-function DeltaHUD:_getCachedRemotes()
-    if self._remotesCache then return self._remotesCache end
+function DeltaHUD:_findRemotes()
+    if self._attackRemote and self._hitRemote then return end
     
-    local remotes = {}
-    local ok, netModule = pcall(function()
-        return require(ReplicatedStorage.Modules.Net)
-    end)
-    
-    if ok and netModule then
-        if netModule.RemoteEvent then
-            remotes.RegisterAttack = netModule:RemoteEvent("RegisterAttack")
-            remotes.RegisterHit = netModule:RemoteEvent("RegisterHit", true)
-        elseif netModule.RE then
-            remotes.RegisterAttack = netModule.RE:WaitForChild("RegisterAttack")
-            remotes.RegisterHit = netModule.RE:WaitForChild("RegisterHit")
-        end
-    end
-    
-    if not remotes.RegisterAttack then
-        local netFolder = ReplicatedStorage:FindFirstChild("Modules")
-        if netFolder and netFolder:FindFirstChild("Net") then
-            local net = netFolder.Net
-            if net:FindFirstChild("RE") then
-                remotes.RegisterAttack = net.RE:WaitForChild("RegisterAttack")
-                remotes.RegisterHit = net.RE:WaitForChild("RegisterHit")
-            elseif net:FindFirstChild("RemoteEvent") then
-                remotes.RegisterAttack = net.RemoteEvent:WaitForChild("RegisterAttack")
-                remotes.RegisterHit = net.RemoteEvent:WaitForChild("RegisterHit")
+    local function deepFind(parent, name)
+        for _, child in ipairs(parent:GetDescendants()) do
+            if child.Name == name and (child:IsA("RemoteEvent") or child:IsA("RemoteFunction")) then
+                return child
             end
         end
+        return nil
     end
     
-    if not remotes.RegisterAttack then
-        remotes.RegisterAttack = ReplicatedStorage:FindFirstChild("RegisterAttack",true)
-        remotes.RegisterHit = ReplicatedStorage:FindFirstChild("RegisterHit",true)
-    end
+    self._attackRemote = deepFind(ReplicatedStorage, "RegisterAttack") or
+                        deepFind(ReplicatedStorage.Modules, "RegisterAttack") if ReplicatedStorage:FindFirstChild("Modules") else nil
     
-    self._remotesCache = remotes
-    return remotes
+    self._hitRemote = deepFind(ReplicatedStorage, "RegisterHit") or
+                     deepFind(ReplicatedStorage.Modules, "RegisterHit") if ReplicatedStorage:FindFirstChild("Modules") else nil
+    
+    if not self._attackRemote then
+        warn("[DeltaHUD] RegisterAttack remote not found!")
+    end
+    if not self._hitRemote then
+        warn("[DeltaHUD] RegisterHit remote not found!")
+    end
 end
 
 function DeltaHUD:InitializeKillAura()
-    local remotes = self:_getCachedRemotes()
-    if not remotes.RegisterAttack then return end
-    
-    local lastAttack = 0
-    local attackDelay = 0.2
-    
     task.spawn(function()
-        while task.wait(0.3) do
-            if self.player.Character then
-                local stun = self.player.Character:FindFirstChild("Stun")
-                if stun then stun.Value = 0 end
-                local busy = self.player.Character:FindFirstChild("Busy")
-                if busy then busy.Value = false end
-            end
-        end
-    end)
-    
-    task.spawn(function()
-        while task.wait(0.05) do
-            if not self.settings.KillAura then continue end
-            if self.player.Character and self.player.Character:FindFirstChild("HumanoidRootPart") then
-                local pos = self.player.Character.HumanoidRootPart.Position
-                local enemies = Workspace.Enemies:GetChildren()
-                
-                if #enemies == 0 then continue end
-                
-                local closest = nil
-                local closestDist = 50
-                
-                for _,enemy in ipairs(enemies) do
-                    if enemy:FindFirstChild("HumanoidRootPart") and enemy:FindFirstChildOfClass("Humanoid") then
-                        local dist = (enemy.HumanoidRootPart.Position - pos).Magnitude
-                        if dist <= closestDist and enemy:FindFirstChildOfClass("Humanoid").Health > 0 then
-                            closestDist = dist
-                            closest = enemy
+        task.wait(2)
+        self:_findRemotes()
+        
+        local lastCleanup = tick()
+        
+        while true do
+            if self.settings.KillAura then
+                if self.player.Character and self.player.Character:FindFirstChild("HumanoidRootPart") then
+                    local char = self.player.Character
+                    local root = char.HumanoidRootPart
+                    local pos = root.Position
+                    
+                    local stun = char:FindFirstChild("Stun")
+                    if stun then stun.Value = 0 end
+                    
+                    local busy = char:FindFirstChild("Busy")
+                    if busy then busy.Value = false end
+                    
+                    local enemies = Workspace:FindFirstChild("Enemies")
+                    if enemies then
+                        local closest = nil
+                        local closestDist = math.huge
+                        
+                        for _, enemy in ipairs(enemies:GetChildren()) do
+                            if enemy:FindFirstChild("HumanoidRootPart") then
+                                local hum = enemy:FindFirstChildOfClass("Humanoid")
+                                if hum and hum.Health > 0 then
+                                    local dist = (enemy.HumanoidRootPart.Position - pos).Magnitude
+                                    if dist <= 50 and dist < closestDist then
+                                        closestDist = dist
+                                        closest = enemy
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if closest and tick() - self._lastAttackTime > 0.1 then
+                            if self._attackRemote then
+                                pcall(function()
+                                    self._attackRemote:FireServer(1)
+                                end)
+                            end
+                            
+                            if self._hitRemote then
+                                pcall(function()
+                                    self._hitRemote:FireServer(
+                                        closest.HumanoidRootPart,
+                                        {{closest, closest.HumanoidRootPart}},
+                                        nil,
+                                        tostring(tick())
+                                    )
+                                end)
+                            end
+                            
+                            self._lastAttackTime = tick()
                         end
                     end
                 end
-                
-                if closest and tick() - lastAttack >= attackDelay then
-                    pcall(function() remotes.RegisterAttack:FireServer(1) end)
-                    if remotes.RegisterHit then
-                        pcall(function()
-                            remotes.RegisterHit:FireServer(
-                                closest.HumanoidRootPart,
-                                {{closest, closest.HumanoidRootPart}},
-                                nil,
-                                tostring(tick())
-                            )
-                        end)
-                    end
-                    lastAttack = tick()
-                end
             end
+            
+            if tick() - lastCleanup > 10 then
+                self:_findRemotes()
+                lastCleanup = tick()
+            end
+            
+            task.wait(0.05)
         end
     end)
 end
@@ -786,4 +803,3 @@ end
 
 local hud = DeltaHUD.new()
 return hud
-  
