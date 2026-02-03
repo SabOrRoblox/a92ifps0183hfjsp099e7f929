@@ -422,47 +422,44 @@ end
 
 function DeltaHUD:InitializeKillAura()
     local function getRemoteEvents()
-    local remotes = {}
-    local success, netModule = pcall(function()
-        return require(ReplicatedStorage.Modules.Net)
-    end)
-    
-    if success and netModule then
-        -- Check for different possible remote structures
-        if netModule.RemoteEvent then
-            remotes.RegisterAttack = netModule.RemoteEvent:FindFirstChild("RegisterAttack")
-            remotes.RegisterHit = netModule.RemoteEvent:FindFirstChild("RegisterHit")
-        elseif netModule.RE then
-            remotes.RegisterAttack = netModule.RE:FindFirstChild("RegisterAttack")
-            remotes.RegisterHit = netModule.RE:FindFirstChild("RegisterHit")
-        end
-    end
-    
-    -- Try other possible locations
-    if not remotes.RegisterAttack then
-        local netFolder = ReplicatedStorage:FindFirstChild("Modules")
-        if netFolder and netFolder:FindFirstChild("Net") then
-            local net = netFolder.Net
-            if net:FindFirstChild("RE") then
-                remotes.RegisterAttack = net.RE:FindFirstChild("RegisterAttack")
-                remotes.RegisterHit = net.RE:FindFirstChild("RegisterHit")
-            elseif net:FindFirstChild("RemoteEvent") then
-                remotes.RegisterAttack = net.RemoteEvent:FindFirstChild("RegisterAttack")
-                remotes.RegisterHit = net.RemoteEvent:FindFirstChild("RegisterHit")
+        local remotes = {}
+        local success, netModule = pcall(function()
+            return require(ReplicatedStorage.Modules.Net)
+        end)
+        
+        if success and netModule then
+            if netModule.RemoteEvent then
+                remotes.RegisterAttack = netModule.RemoteEvent:FindFirstChild("RegisterAttack")
+                remotes.RegisterHit = netModule.RemoteEvent:FindFirstChild("RegisterHit")
+            elseif netModule.RE then
+                remotes.RegisterAttack = netModule.RE:FindFirstChild("RegisterAttack")
+                remotes.RegisterHit = netModule.RE:FindFirstChild("RegisterHit")
             end
         end
-    end
-    
-    -- Search through entire ReplicatedStorage
-    if not remotes.RegisterAttack then
-        remotes.RegisterAttack = ReplicatedStorage:FindFirstChild("RegisterAttack", true)
-    end
-    
-    if not remotes.RegisterHit then
-        remotes.RegisterHit = ReplicatedStorage:FindFirstChild("RegisterHit", true)
-    end
-    
-    return remotes
+        
+        if not remotes.RegisterAttack then
+            local netFolder = ReplicatedStorage:FindFirstChild("Modules")
+            if netFolder and netFolder:FindFirstChild("Net") then
+                local net = netFolder.Net
+                if net:FindFirstChild("RE") then
+                    remotes.RegisterAttack = net.RE:FindFirstChild("RegisterAttack")
+                    remotes.RegisterHit = net.RE:FindFirstChild("RegisterHit")
+                elseif net:FindFirstChild("RemoteEvent") then
+                    remotes.RegisterAttack = net.RemoteEvent:FindFirstChild("RegisterAttack")
+                    remotes.RegisterHit = net.RemoteEvent:FindFirstChild("RegisterHit")
+                end
+            end
+        end
+        
+        if not remotes.RegisterAttack then
+            remotes.RegisterAttack = ReplicatedStorage:FindFirstChild("RegisterAttack", true)
+        end
+        
+        if not remotes.RegisterHit then
+            remotes.RegisterHit = ReplicatedStorage:FindFirstChild("RegisterHit", true)
+        end
+        
+        return remotes
     end
     
     task.spawn(function()
@@ -478,11 +475,21 @@ function DeltaHUD:InitializeKillAura()
     
     task.spawn(function()
         local remotes = getRemoteEvents()
-        if not remotes.RegisterAttack then return end
+        
+        -- ВАЖНО: Добавить отладочный вывод
+        print("[DeltaHUD] Поиск RemoteEvents...")
+        print("[DeltaHUD] RegisterAttack найден:", remotes.RegisterAttack)
+        print("[DeltaHUD] RegisterHit найден:", remotes.RegisterHit)
+        
+        if not remotes.RegisterAttack then 
+            warn("[DeltaHUD] RemoteEvent 'RegisterAttack' не найден. KillAura отключен.")
+            return 
+        end
         
         local lastAttack = 0
         
         while task.wait(0) do
+            -- ВАЖНО: Проверьте правильность написания killAuraSettings
             if not self.killAuraSettings.Enabled then
                 task.wait(0.1)
                 continue
@@ -532,9 +539,14 @@ function DeltaHUD:InitializeKillAura()
                     end
                     
                     if #targets > 0 then
-                        pcall(function()
-                            remotes.RegisterAttack:FireServer(1/0)
-                        end)
+                        -- ДОБАВЬТЕ ПРОВЕРКУ
+                        if remotes.RegisterAttack then
+                            pcall(function()
+                                remotes.RegisterAttack:FireServer(1/0)
+                            end)
+                        else
+                            warn("[DeltaHUD] RegisterAttack равен nil!")
+                        end
                         
                         if remotes.RegisterHit and #targets > 0 then
                             local mainTarget = targets[1]
@@ -575,9 +587,11 @@ function DeltaHUD:InitializeKillAura()
                             if enemy:FindFirstChild("HumanoidRootPart") and enemy:FindFirstChildOfClass("Humanoid") then
                                 local distance = (enemy.HumanoidRootPart.Position - characterPos).Magnitude
                                 if distance <= self.killAuraSettings.Range and enemy:FindFirstChildOfClass("Humanoid").Health > 0 then
-                                    pcall(function()
-                                        remotes.RegisterAttack:FireServer(1)
-                                    end)
+                                    if remotes.RegisterAttack then
+                                        pcall(function()
+                                            remotes.RegisterAttack:FireServer(1)
+                                        end)
+                                    end
                                     if remotes.RegisterHit then
                                         pcall(function()
                                             remotes.RegisterHit:FireServer(
@@ -608,17 +622,21 @@ function DeltaHUD:InitializeKillAura()
                                     end
                                     
                                     if distance <= self.killAuraSettings.Range and canAttack and targetCharacter:FindFirstChildOfClass("Humanoid").Health > 0 then
-                                        pcall(function()
-                                            remotes.RegisterAttack:FireServer(1)
-                                        end)
-                                        pcall(function()
-                                            remotes.RegisterHit:FireServer(
-                                                targetCharacter.HumanoidRootPart,
-                                                {{targetCharacter, targetCharacter.HumanoidRootPart}},
-                                                nil,
-                                                tostring(tick())
-                                            )
-                                        })
+                                        if remotes.RegisterAttack then
+                                            pcall(function()
+                                                remotes.RegisterAttack:FireServer(1)
+                                            end)
+                                        end
+                                        if remotes.RegisterHit then
+                                            pcall(function()
+                                                remotes.RegisterHit:FireServer(
+                                                    targetCharacter.HumanoidRootPart,
+                                                    {{targetCharacter, targetCharacter.HumanoidRootPart}},
+                                                    nil,
+                                                    tostring(tick())
+                                                )
+                                            end)
+                                        end
                                         lastAttack = currentTime
                                         break
                                     end
