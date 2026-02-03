@@ -422,41 +422,47 @@ end
 
 function DeltaHUD:InitializeKillAura()
     local function getRemoteEvents()
-        local remotes = {}
-        local success, netModule = pcall(function()
-            return require(ReplicatedStorage.Modules.Net)
-        end)
-        
-        if success and netModule then
-            if netModule.RemoteEvent then
-                remotes.RegisterAttack = netModule:RemoteEvent("RegisterAttack")
-                remotes.RegisterHit = netModule:RemoteEvent("RegisterHit", true)
-            elseif netModule.RE then
-                remotes.RegisterAttack = netModule.RE:WaitForChild("RegisterAttack")
-                remotes.RegisterHit = netModule.RE:WaitForChild("RegisterHit")
+    local remotes = {}
+    local success, netModule = pcall(function()
+        return require(ReplicatedStorage.Modules.Net)
+    end)
+    
+    if success and netModule then
+        -- Check for different possible remote structures
+        if netModule.RemoteEvent then
+            remotes.RegisterAttack = netModule.RemoteEvent:FindFirstChild("RegisterAttack")
+            remotes.RegisterHit = netModule.RemoteEvent:FindFirstChild("RegisterHit")
+        elseif netModule.RE then
+            remotes.RegisterAttack = netModule.RE:FindFirstChild("RegisterAttack")
+            remotes.RegisterHit = netModule.RE:FindFirstChild("RegisterHit")
+        end
+    end
+    
+    -- Try other possible locations
+    if not remotes.RegisterAttack then
+        local netFolder = ReplicatedStorage:FindFirstChild("Modules")
+        if netFolder and netFolder:FindFirstChild("Net") then
+            local net = netFolder.Net
+            if net:FindFirstChild("RE") then
+                remotes.RegisterAttack = net.RE:FindFirstChild("RegisterAttack")
+                remotes.RegisterHit = net.RE:FindFirstChild("RegisterHit")
+            elseif net:FindFirstChild("RemoteEvent") then
+                remotes.RegisterAttack = net.RemoteEvent:FindFirstChild("RegisterAttack")
+                remotes.RegisterHit = net.RemoteEvent:FindFirstChild("RegisterHit")
             end
         end
-        
-        if not remotes.RegisterAttack then
-            local netFolder = ReplicatedStorage:FindFirstChild("Modules")
-            if netFolder and netFolder:FindFirstChild("Net") then
-                local net = netFolder.Net
-                if net:FindFirstChild("RE") then
-                    remotes.RegisterAttack = net.RE:WaitForChild("RegisterAttack")
-                    remotes.RegisterHit = net.RE:WaitForChild("RegisterHit")
-                elseif net:FindFirstChild("RemoteEvent") then
-                    remotes.RegisterAttack = net.RemoteEvent:WaitForChild("RegisterAttack")
-                    remotes.RegisterHit = net.RemoteEvent:WaitForChild("RegisterHit")
-                end
-            end
-        end
-        
-        if not remotes.RegisterAttack then
-            remotes.RegisterAttack = ReplicatedStorage:FindFirstChild("RegisterAttack", true)
-            remotes.RegisterHit = ReplicatedStorage:FindFirstChild("RegisterHit", true)
-        end
-        
-        return remotes
+    end
+    
+    -- Search through entire ReplicatedStorage
+    if not remotes.RegisterAttack then
+        remotes.RegisterAttack = ReplicatedStorage:FindFirstChild("RegisterAttack", true)
+    end
+    
+    if not remotes.RegisterHit then
+        remotes.RegisterHit = ReplicatedStorage:FindFirstChild("RegisterHit", true)
+    end
+    
+    return remotes
     end
     
     task.spawn(function()
