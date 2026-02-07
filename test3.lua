@@ -1,721 +1,787 @@
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local P=game:GetService("Players")
+local R=game:GetService("RunService")
+local W=game:GetService("Workspace")
+local U=game:GetService("UserInputService")
+local S=game:GetService("ReplicatedStorage")
+local T=game:GetService("TweenService")
 
-local DeltaHUD = {}
-DeltaHUD.__index = DeltaHUD
+local D={}
+D.__index=D
 
-getgenv().DeltaHUD = DeltaHUD
+getgenv().DeltaHUD=D
 
-function DeltaHUD.new()
+function D.new()
     if getgenv()._DeltaHUDInstance then
         getgenv()._DeltaHUDInstance:Destroy()
     end
     
-    local self = setmetatable({}, DeltaHUD)
+    local self=setmetatable({},D)
     
-    self.player = Players.LocalPlayer
-    self.showHUD = true
-    self.lastUpdate = 0
-    self.updateInterval = 0.3
-    self.fps = 0
-    self.fpsCounter = 0
-    self.fpsTime = 0
-    self.startTime = os.clock()
-    self.showGameTime = false
-    self.connections = {}
+    self.p=P.LocalPlayer
+    self.showHUD=true
+    self.lastUpdate=0
+    self.updateInterval=0.3
+    self.fps=0
+    self.fpsCounter=0
+    self.fpsTime=0
+    self.startTime=os.clock()
+    self.showGameTime=false
+    self.connections={}
+    self.hlConnections={}
+    self.hlCache={}
+    self.fruitESP=false
+    self.speedEnabled=false
+    self.speedAmount=100
+    self.curPlatform=nil
+    self.fruitHLs={}
     
-    self.highlighterSettings = {
-        Enabled = true,
-        OutlineColor = Color3.fromRGB(85, 170, 255),
-        OutlineTransparency = 0,
-        OutlineThickness = 3,
-        NameTagColor = Color3.fromRGB(255, 255, 255),
-        NameTagOutlineColor = Color3.fromRGB(0, 0, 0),
-        NameTagSize = 14,
-        NameTagFont = Enum.Font.GothamMedium,
-        NameTagOffset = Vector3.new(0, 8.5, 0),
-        TeamColor = false,
-        ShowDistance = true,
-        MaxDistance = 10000
+    self.hlSettings={
+        Enabled=true,
+        OutlineColor=Color3.fromRGB(85,170,255),
+        OutlineTransparency=0,
+        OutlineThickness=3,
+        NameTagColor=Color3.fromRGB(255,255,255),
+        NameTagOutlineColor=Color3.fromRGB(0,0,0),
+        NameTagSize=14,
+        NameTagFont=Enum.Font.GothamMedium,
+        NameTagOffset=Vector3.new(0,8.5,0),
+        TeamColor=false,
+        ShowDistance=true,
+        MaxDistance=10000,
+        ShowHPBar=true
     }
     
-    self.killAuraSettings = {
-        Enabled = true,
-        Range = 50,
-        AttackNPC = true,
-        AttackPlayers = true,
-        TeamCheck = false,
-        Cooldown = 0.05,
-        MultiHit = true,
-        MaxTargets = 10,
-        FastAttack = true
-    }
-    
-    self.highlightCache = {}
-    self.highlighterConnections = {}
-    
-    getgenv()._DeltaHUDInstance = self
+    getgenv()._DeltaHUDInstance=self
     
     self:Initialize()
-    self:InitializeHighlighter()
-    self:InitializeKillAura()
+    self:InitializeHL()
+    self:InitializeSaveBtn()
+    self:InitializeFruitBtn()
+    self:InitializeSpeedBtn()
+    self:InitializeFastAttack()
+    self:InitializeSpeedBoost()
     
     return self
 end
 
-function DeltaHUD:InitializeHighlighter()
-    for _, data in pairs(self.highlightCache) do
-        if data.Highlight then data.Highlight:Destroy() end
-        if data.Billboard then data.Billboard:Destroy() end
-    end
-    
-    self.highlightCache = {}
-    
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= self.player then
-            self:onPlayerAdded(player)
-        end
-    end
-    
-    table.insert(self.highlighterConnections, Players.PlayerAdded:Connect(function(player)
-        self:onPlayerAdded(player)
-    end))
-    
-    table.insert(self.highlighterConnections, Players.PlayerRemoving:Connect(function(player)
-        self:onPlayerRemoving(player)
-    end))
-    
-    RunService.Heartbeat:Connect(function()
-        if not self.highlighterSettings.Enabled then return end
-        for player, highlightData in pairs(self.highlightCache) do
-            if not self:updateNameTag(highlightData) then
-                self.highlightCache[player] = nil
+function D:InitializeSpeedBoost()
+    R.Heartbeat:Connect(function()
+        if not self.speedEnabled then return end
+        local c=self.p.Character
+        if not c then return end
+        local h=c:FindFirstChild("Humanoid")
+        if not h then return end
+        
+        h.WalkSpeed=self.speedAmount
+        
+        for _,v in pairs(c:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide=false
             end
         end
     end)
 end
 
-function DeltaHUD:createHighlight(model, player)
-    if not model or not model:IsA("Model") then return nil end
+function D:InitializeSaveBtn()
+    local b=Instance.new("TextButton")
+    b.Name="SaveBtn"
+    b.Size=UDim2.new(0,80,0,35)
+    b.Position=UDim2.new(0.5,170,0,10)
+    b.BackgroundColor3=Color3.fromRGB(20,20,30)
+    b.BackgroundTransparency=0.1
+    b.Text="SAVE"
+    b.TextColor3=Color3.fromRGB(255,255,255)
+    b.TextSize=13
+    b.Font=Enum.Font.GothamBold
+    b.BorderSizePixel=0
     
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "PlayerHighlight"
-    highlight.Adornee = model
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.FillTransparency = 1
-    highlight.OutlineColor = self.highlighterSettings.OutlineColor
-    highlight.OutlineTransparency = self.highlighterSettings.OutlineTransparency
-    highlight.Enabled = self.highlighterSettings.Enabled
+    local c=Instance.new("UICorner")
+    c.CornerRadius=UDim.new(0,8)
+    c.Parent=b
     
-    if self.highlighterSettings.TeamColor and player.Team then
-        highlight.OutlineColor = player.Team.TeamColor.Color
+    local s=Instance.new("UIStroke")
+    s.Color=Color3.fromRGB(85,170,255)
+    s.Thickness=2
+    s.Parent=b
+    
+    b.MouseButton1Click:Connect(function()
+        self:SavePosition()
+    end)
+    
+    b.Parent=self.sg
+end
+
+function D:InitializeFruitBtn()
+    local b=Instance.new("TextButton")
+    b.Name="FruitBtn"
+    b.Size=UDim2.new(0,120,0,35)
+    b.Position=UDim2.new(0.5,170,0,50)
+    b.BackgroundColor3=Color3.fromRGB(20,30,20)
+    b.BackgroundTransparency=0.1
+    b.Text="ESP/Fruits OFF"
+    b.TextColor3=Color3.fromRGB(255,255,255)
+    b.TextSize=12
+    b.Font=Enum.Font.GothamBold
+    b.BorderSizePixel=0
+    
+    local c=Instance.new("UICorner")
+    c.CornerRadius=UDim.new(0,8)
+    c.Parent=b
+    
+    local s=Instance.new("UIStroke")
+    s.Color=Color3.fromRGB(0,255,0)
+    s.Thickness=2
+    s.Parent=b
+    
+    b.MouseButton1Click:Connect(function()
+        self.fruitESP=not self.fruitESP
+        b.Text=self.fruitESP and "ESP/Fruits ON" or "ESP/Fruits OFF"
+        s.Color=self.fruitESP and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,50,50)
+        
+        if self.fruitESP then
+            self:StartFruitESP()
+        else
+            self:StopFruitESP()
+        end
+    end)
+    
+    b.Parent=self.sg
+end
+
+function D:InitializeSpeedBtn()
+    local b=Instance.new("TextButton")
+    b.Name="SpeedBtn"
+    b.Size=UDim2.new(0,80,0,35)
+    b.Position=UDim2.new(0.5,300,0,50)
+    b.BackgroundColor3=Color3.fromRGB(30,20,20)
+    b.BackgroundTransparency=0.1
+    b.Text="SPEED OFF"
+    b.TextColor3=Color3.fromRGB(255,255,255)
+    b.TextSize=12
+    b.Font=Enum.Font.GothamBold
+    b.BorderSizePixel=0
+    
+    local c=Instance.new("UICorner")
+    c.CornerRadius=UDim.new(0,8)
+    c.Parent=b
+    
+    local s=Instance.new("UIStroke")
+    s.Color=Color3.fromRGB(255,50,50)
+    s.Thickness=2
+    s.Parent=b
+    
+    b.MouseButton1Click:Connect(function()
+        self.speedEnabled=not self.speedEnabled
+        b.Text=self.speedEnabled and "SPEED ON" or "SPEED OFF"
+        s.Color=self.speedEnabled and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,50,50)
+    end)
+    
+    b.Parent=self.sg
+end
+
+function D:SavePosition()
+    if self.curPlatform then
+        self.curPlatform:Destroy()
+        self.curPlatform=nil
     end
     
-    highlight.Parent = model
+    local c=self.p.Character
+    if not c then return end
+    local h=c:FindFirstChild("HumanoidRootPart")
+    if not h then return end
     
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "PlayerNameTag"
-    billboard.Adornee = model:FindFirstChild("Head") or model.PrimaryPart or model
-    billboard.Size = UDim2.new(0, 250, 0, 70)
-    billboard.StudsOffset = Vector3.new(0, 8.5, 0)
-    billboard.AlwaysOnTop = true
-    billboard.MaxDistance = self.highlighterSettings.MaxDistance
-    billboard.Enabled = self.highlighterSettings.Enabled
+    local o=h.Position
+    local nh=3000
+    local np=o+Vector3.new(0,nh,0)
     
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "NameText"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = self.highlighterSettings.NameTagColor
-    textLabel.TextSize = self.highlighterSettings.NameTagSize
-    textLabel.Font = self.highlighterSettings.NameTagFont
-    textLabel.TextStrokeTransparency = 0
-    textLabel.TextStrokeColor3 = self.highlighterSettings.NameTagOutlineColor
-    textLabel.Text = player.Name
-    textLabel.TextYAlignment = Enum.TextYAlignment.Center
-    textLabel.Parent = billboard
-    billboard.Parent = model
+    local d=(np-o).Magnitude
+    local sp=350
+    
+    for _,v in pairs(c:GetDescendants()) do
+        if v:IsA("BasePart") then v.CanCollide=false end
+    end
+    
+    local t=T:Create(h,TweenInfo.new(d/sp,Enum.EasingStyle.Linear),{CFrame=CFrame.new(np)})
+    t:Play()
+    
+    task.wait(d/sp)
+    
+    local p=Instance.new("Part")
+    p.Name="SavePlatform"
+    p.Size=Vector3.new(100,5,100)
+    p.Position=o+Vector3.new(0,-10,0)
+    p.Anchored=true
+    p.CanCollide=true
+    p.Transparency=0.4
+    p.Color=Color3.fromRGB(85,170,255)
+    p.Material=Enum.Material.Neon
+    p.Parent=W
+    
+    self.curPlatform=p
+    
+    task.wait(0.1)
+    h.CFrame=CFrame.new(p.Position+Vector3.new(0,10,0))
+end
+
+function D:StartFruitESP()
+    task.spawn(function()
+        while self.fruitESP do
+            task.wait(0.5)
+            
+            for _,h in pairs(self.fruitHLs) do
+                if h then h:Destroy() end
+            end
+            self.fruitHLs={}
+            
+            local c=self.p.Character
+            if not c then continue end
+            local h=c:FindFirstChild("HumanoidRootPart")
+            if not h then continue end
+            
+            for _,o in pairs(W:GetChildren()) do
+                if o.Name=="Fruit" or (o:IsA("Model") and o:FindFirstChild("Handle")) then
+                    local ha=o:FindFirstChild("Handle") or o.PrimaryPart
+                    if not ha then continue end
+                    
+                    local d=(h.Position-ha.Position).Magnitude
+                    
+                    if d>300 then
+                        local hl=Instance.new("Highlight")
+                        hl.Name="FruitESP"
+                        hl.Adornee=o
+                        hl.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
+                        hl.FillColor=Color3.fromRGB(255,215,0)
+                        hl.FillTransparency=0.7
+                        hl.OutlineColor=Color3.fromRGB(255,255,0)
+                        hl.OutlineTransparency=0
+                        hl.Enabled=true
+                        hl.Parent=o
+                        
+                        local bb=Instance.new("BillboardGui")
+                        bb.Name="FruitInfo"
+                        bb.Adornee=ha
+                        bb.Size=UDim2.new(0,200,0,50)
+                        bb.StudsOffset=Vector3.new(0,5,0)
+                        bb.AlwaysOnTop=true
+                        bb.MaxDistance=5000
+                        
+                        local tl=Instance.new("TextLabel")
+                        tl.Name="FruitText"
+                        tl.Size=UDim2.new(1,0,1,0)
+                        tl.BackgroundTransparency=1
+                        tl.TextColor3=Color3.fromRGB(255,255,0)
+                        tl.TextSize=12
+                        tl.Font=Enum.Font.GothamBold
+                        tl.TextStrokeTransparency=0
+                        tl.TextStrokeColor3=Color3.fromRGB(0,0,0)
+                        tl.Text=string.format("{ ??? } | %dm",math.floor(d))
+                        tl.Parent=bb
+                        bb.Parent=o
+                        
+                        table.insert(self.fruitHLs,hl)
+                        table.insert(self.fruitHLs,bb)
+                    else
+                        task.spawn(function()
+                            local hrp=c:FindFirstChild("HumanoidRootPart")
+                            if not hrp then return end
+                            
+                            while o.Parent and (hrp.Position-ha.Position).Magnitude>10 and self.fruitESP do
+                                local nd=(hrp.Position-ha.Position).Magnitude
+                                local sp=200
+                                if nd<100 then sp=100 end
+                                
+                                local t=T:Create(hrp,TweenInfo.new(nd/sp,Enum.EasingStyle.Linear),
+                                    {CFrame=CFrame.new(ha.Position)})
+                                t:Play()
+                                task.wait(nd/sp)
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+function D:StopFruitESP()
+    for _,h in pairs(self.fruitHLs) do
+        if h then h:Destroy() end
+    end
+    self.fruitHLs={}
+end
+
+function D:InitializeFastAttack()
+    task.spawn(function()
+        while task.wait() do
+            local c=self.p.Character
+            if not c then continue end
+            local h=c:FindFirstChild("HumanoidRootPart")
+            if not h then continue end
+            
+            local s=c:FindFirstChild("Stun")
+            if s then s.Value=0 end
+            local b=c:FindFirstChild("Busy")
+            if b then b.Value=false end
+            
+            local ts={}
+            local p=h.Position
+            
+            for _,e in pairs(W.Enemies:GetChildren()) do
+                if e:FindFirstChild("HumanoidRootPart") and e:FindFirstChildOfClass("Humanoid") then
+                    local d=(e.HumanoidRootPart.Position-p).Magnitude
+                    if d<50 and e:FindFirstChildOfClass("Humanoid").Health>0 then
+                        table.insert(ts,e)
+                    end
+                end
+            end
+            
+            for _,pl in pairs(P:GetPlayers()) do
+                if pl~=self.p and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart") then
+                    local tc=pl.Character
+                    local d=(tc.HumanoidRootPart.Position-p).Magnitude
+                    if d<50 and tc:FindFirstChildOfClass("Humanoid").Health>0 then
+                        if not self.p.Team or not pl.Team or self.p.Team~=pl.Team then
+                            table.insert(ts,tc)
+                        end
+                    end
+                end
+            end
+            
+            if #ts>0 then
+                local suc,ar=pcall(function()
+                    return require(S.Modules.Net):RemoteEvent("RegisterAttack")
+                end)
+                
+                if suc and ar then
+                    for i=1,3 do
+                        pcall(function() ar:FireServer(1) end)
+                        task.wait(0.01)
+                    end
+                end
+                
+                task.wait(0.05)
+            end
+        end
+    end)
+end
+
+function D:InitializeHL()
+    for pl,d in pairs(self.hlCache) do
+        if d.H then d.H:Destroy() end
+        if d.B then d.B:Destroy() end
+    end
+    
+    self.hlCache={}
+    
+    for _,pl in ipairs(P:GetPlayers()) do
+        if pl~=self.p then
+            self:onPAdded(pl)
+        end
+    end
+    
+    table.insert(self.hlConnections,P.PlayerAdded:Connect(function(pl)
+        self:onPAdded(pl)
+    end))
+    
+    table.insert(self.hlConnections,P.PlayerRemoving:Connect(function(pl)
+        self:onPRemoving(pl)
+    end))
+    
+    R.Heartbeat:Connect(function()
+        if not self.hlSettings.Enabled then return end
+        for pl,hd in pairs(self.hlCache) do
+            if not self:updateNT(hd) then
+                self.hlCache[pl]=nil
+            end
+        end
+    end)
+end
+
+function D:createHPBar(m)
+    local b=Instance.new("Frame")
+    b.Name="HPBar"
+    b.Size=UDim2.new(1.5,0,0,6)
+    b.Position=UDim2.new(-0.25,0,0,-12)
+    b.BackgroundColor3=Color3.fromRGB(60,60,60)
+    b.BorderSizePixel=0
+    
+    local c=Instance.new("UICorner")
+    c.CornerRadius=UDim.new(0,3)
+    c.Parent=b
+    
+    local f=Instance.new("Frame")
+    f.Name="Fill"
+    f.Size=UDim2.new(1,0,1,0)
+    f.BackgroundColor3=Color3.fromRGB(0,255,0)
+    f.BorderSizePixel=0
+    f.Parent=b
+    
+    local fc=Instance.new("UICorner")
+    fc.CornerRadius=UDim.new(0,3)
+    fc.Parent=f
+    
+    return b
+end
+
+function D:createHL(m,pl)
+    if not m or not m:IsA("Model") then return nil end
+    
+    local h=Instance.new("Highlight")
+    h.Name="PlayerHL"
+    h.Adornee=m
+    h.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
+    h.FillTransparency=1
+    h.OutlineColor=self.hlSettings.OutlineColor
+    h.OutlineTransparency=self.hlSettings.OutlineTransparency
+    h.Enabled=self.hlSettings.Enabled
+    
+    if self.hlSettings.TeamColor and pl.Team then
+        h.OutlineColor=pl.Team.TeamColor.Color
+    end
+    
+    h.Parent=m
+    
+    local b=Instance.new("BillboardGui")
+    b.Name="PlayerNT"
+    b.Adornee=m:FindFirstChild("Head") or m.PrimaryPart or m
+    b.Size=UDim2.new(0,200,0,50)
+    b.StudsOffset=Vector3.new(0,8.5,0)
+    b.AlwaysOnTop=true
+    b.MaxDistance=self.hlSettings.MaxDistance
+    b.Enabled=self.hlSettings.Enabled
+    
+    local t=Instance.new("TextLabel")
+    t.Name="NameText"
+    t.Size=UDim2.new(1,0,1,0)
+    t.BackgroundTransparency=1
+    t.TextColor3=self.hlSettings.NameTagColor
+    t.TextSize=self.hlSettings.NameTagSize
+    t.Font=self.hlSettings.NameTagFont
+    t.TextStrokeTransparency=0
+    t.TextStrokeColor3=self.hlSettings.NameTagOutlineColor
+    t.Text=pl.Name
+    t.TextYAlignment=Enum.TextYAlignment.Center
+    t.Parent=b
+    b.Parent=m
+    
+    local hp
+    if self.hlSettings.ShowHPBar then
+        hp=self:createHPBar(b)
+        hp.Parent=b
+        t.Position=UDim2.new(0,0,0,10)
+        t.Size=UDim2.new(1,0,0,20)
+    end
     
     return {
-        Highlight = highlight,
-        Billboard = billboard,
-        Player = player,
-        Model = model
+        H=h,
+        B=b,
+        P=pl,
+        M=m,
+        HPBar=hp
     }
 end
 
-function DeltaHUD:updateNameTag(highlightData)
-    if not highlightData or not highlightData.Model or not highlightData.Model.PrimaryPart then
+function D:updateNT(hd)
+    if not hd or not hd.M or not hd.M.PrimaryPart then
         return false
     end
     
-    local player = highlightData.Player
-    local model = highlightData.Model
-    local billboard = highlightData.Billboard
-    local highlight = highlightData.Highlight
+    local pl=hd.P
+    local m=hd.M
+    local b=hd.B
+    local h=hd.H
     
-    if not player or player.Parent ~= Players or not model.Parent then
-        if highlight then highlight:Destroy() end
-        if billboard then billboard:Destroy() end
+    if not pl or pl.Parent~=P or not m.Parent then
+        if h then h:Destroy() end
+        if b then b:Destroy() end
         return false
     end
     
-    local distance = (self.player.Character and model.PrimaryPart and 
-                     (self.player.Character.PrimaryPart.Position - model.PrimaryPart.Position).Magnitude) or 0
+    local d=(self.p.Character and m.PrimaryPart and 
+                 (self.p.Character.PrimaryPart.Position - m.PrimaryPart.Position).Magnitude) or 0
     
-    if distance > self.highlighterSettings.MaxDistance then
-        highlight.Enabled = false
-        billboard.Enabled = false
+    if d>self.hlSettings.MaxDistance then
+        h.Enabled=false
+        b.Enabled=false
         return true
     end
     
-    highlight.Enabled = self.highlighterSettings.Enabled
-    billboard.Enabled = self.highlighterSettings.Enabled
+    h.Enabled=self.hlSettings.Enabled
+    b.Enabled=self.hlSettings.Enabled
     
-    local healthInfo = ""
-    local humanoid = model:FindFirstChildOfClass("Humanoid")
+    local ht=""
+    local hp=1
+    local hu=m:FindFirstChildOfClass("Humanoid")
     
-    if humanoid then
-        healthInfo = string.format("HP: %d/%d", math.floor(humanoid.Health), math.floor(humanoid.MaxHealth))
+    if hu then
+        local cur=math.floor(hu.Health)
+        local max=math.floor(hu.MaxHealth)
+        ht=string.format("[%d/%d]",cur,max)
+        hp=math.max(0,math.min(1,hu.Health/hu.MaxHealth))
     else
-        local data = model:FindFirstChild("Data")
-        if data then
-            local level = data:FindFirstChild("Level")
-            if level then
-                healthInfo = string.format("LVL: %d", level.Value)
+        local da=m:FindFirstChild("Data")
+        if da then
+            local l=da:FindFirstChild("Level")
+            if l then
+                ht=string.format("[LVL:%d]",l.Value)
             end
         end
     end
     
-    if billboard and billboard.NameText then
-        if self.highlighterSettings.ShowDistance then
-            billboard.NameText.Text = string.format("%s [%dm]\n%s", 
-                player.Name, 
-                math.floor(distance), 
-                healthInfo)
+    if b and b.NameText then
+        if self.hlSettings.ShowDistance then
+            b.NameText.Text=string.format("%s [%dm]\n<font color='#00FF00'>%s</font>", 
+                pl.Name, 
+                math.floor(d), 
+                ht)
         else
-            billboard.NameText.Text = string.format("%s\n%s", player.Name, healthInfo)
+            b.NameText.Text=string.format("%s\n<font color='#00FF00'>%s</font>",pl.Name,ht)
         end
+        b.NameText.RichText=true
     end
     
-    if self.highlighterSettings.TeamColor and player.Team then
-        highlight.OutlineColor = player.Team.TeamColor.Color
+    if hd.HPBar then
+        hd.HPBar.Fill.Size=UDim2.new(hp,0,1,0)
+    end
+    
+    if self.hlSettings.TeamColor and pl.Team then
+        h.OutlineColor=pl.Team.TeamColor.Color
     end
     
     return true
 end
 
-function DeltaHUD:onPlayerAdded(player)
-    if player == self.player then return end
+function D:onPAdded(pl)
+    if pl==self.p then return end
     
-    local function characterAdded(character)
-        if not character then return end
+    local function ca(ch)
+        if not ch then return end
         task.wait(0.5)
-        if character and character:IsA("Model") then
-            if self.highlightCache[player] then
-                local oldData = self.highlightCache[player]
-                if oldData.Highlight then oldData.Highlight:Destroy() end
-                if oldData.Billboard then oldData.Billboard:Destroy() end
+        if ch and ch:IsA("Model") then
+            if self.hlCache[pl] then
+                local o=self.hlCache[pl]
+                if o.H then o.H:Destroy() end
+                if o.B then o.B:Destroy() end
             end
-            local highlightData = self:createHighlight(character, player)
-            if highlightData then
-                self.highlightCache[player] = highlightData
+            local hd=self:createHL(ch,pl)
+            if hd then
+                self.hlCache[pl]=hd
             end
         end
     end
     
-    local conn = player.CharacterAdded:Connect(characterAdded)
-    table.insert(self.highlighterConnections, conn)
+    local cn=pl.CharacterAdded:Connect(ca)
+    table.insert(self.hlConnections,cn)
     
-    if player.Character then
-        characterAdded(player.Character)
+    if pl.Character then
+        ca(pl.Character)
     end
     
-    local removedConn = player.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            if self.highlightCache[player] then
-                local data = self.highlightCache[player]
-                if data.Highlight then data.Highlight:Destroy() end
-                if data.Billboard then data.Billboard:Destroy() end
-                self.highlightCache[player] = nil
+    local rc=pl.AncestryChanged:Connect(function(_,pa)
+        if not pa then
+            if self.hlCache[pl] then
+                local d=self.hlCache[pl]
+                if d.H then d.H:Destroy() end
+                if d.B then d.B:Destroy() end
+                self.hlCache[pl]=nil
             end
         end
     end)
-    table.insert(self.highlighterConnections, removedConn)
+    table.insert(self.hlConnections,rc)
 end
 
-function DeltaHUD:onPlayerRemoving(player)
-    if self.highlightCache[player] then
-        local data = self.highlightCache[player]
-        if data.Highlight then data.Highlight:Destroy() end
-        if data.Billboard then data.Billboard:Destroy() end
-        self.highlightCache[player] = nil
+function D:onPRemoving(pl)
+    if self.hlCache[pl] then
+        local d=self.hlCache[pl]
+        if d.H then d.H:Destroy() end
+        if d.B then d.B:Destroy() end
+        self.hlCache[pl]=nil
     end
 end
 
-function DeltaHUD:Initialize()
-    if self.player.PlayerGui:FindFirstChild("DeltaHUD") then
-        self.player.PlayerGui.DeltaHUD:Destroy()
+function D:Initialize()
+    if self.p.PlayerGui:FindFirstChild("DeltaHUD") then
+        self.p.PlayerGui.DeltaHUD:Destroy()
     end
     
-    self.screenGui = Instance.new("ScreenGui")
-    self.screenGui.Name = "DeltaHUD"
-    self.screenGui.DisplayOrder = 999
-    self.screenGui.IgnoreGuiInset = true
-    self.screenGui.ResetOnSpawn = false
+    self.sg=Instance.new("ScreenGui")
+    self.sg.Name="DeltaHUD"
+    self.sg.DisplayOrder=999
+    self.sg.IgnoreGuiInset=true
+    self.sg.ResetOnSpawn=false
     
-    self.mainFrame = Instance.new("Frame")
-    self.mainFrame.Name = "MainFrame"
-    self.mainFrame.Size = UDim2.new(0, 300, 0, 40)
-    self.mainFrame.Position = UDim2.new(0.5, -150, 0, 10)
-    self.mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-    self.mainFrame.BackgroundTransparency = 0.2
-    self.mainFrame.BorderSizePixel = 0
+    self.mf=Instance.new("Frame")
+    self.mf.Name="MainFrame"
+    self.mf.Size=UDim2.new(0,300,0,40)
+    self.mf.Position=UDim2.new(0.5,-150,0,10)
+    self.mf.BackgroundColor3=Color3.fromRGB(15,15,20)
+    self.mf.BackgroundTransparency=0.2
+    self.mf.BorderSizePixel=0
     
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = self.mainFrame
+    local c=Instance.new("UICorner")
+    c.CornerRadius=UDim.new(0,6)
+    c.Parent=self.mf
     
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Transparency = 0.85
-    stroke.Thickness = 1
-    stroke.Parent = self.mainFrame
+    local s=Instance.new("UIStroke")
+    s.Color=Color3.fromRGB(255,255,255)
+    s.Transparency=0.85
+    s.Thickness=1
+    s.Parent=self.mf
     
-    self.sections = {}
-    local sectionWidth = 100
+    self.secs={}
+    local w=100
     
-    for i = 1, 3 do
-        local sectionFrame = Instance.new("Frame")
-        sectionFrame.Name = "Section" .. i
-        sectionFrame.Size = UDim2.new(0, sectionWidth, 1, 0)
-        sectionFrame.Position = UDim2.new(0, (i-1) * sectionWidth, 0, 0)
-        sectionFrame.BackgroundTransparency = 1
-        sectionFrame.BorderSizePixel = 0
-        sectionFrame.Parent = self.mainFrame
+    for i=1,3 do
+        local sf=Instance.new("Frame")
+        sf.Name="Sec"..i
+        sf.Size=UDim2.new(0,w,1,0)
+        sf.Position=UDim2.new(0,(i-1)*w,0,0)
+        sf.BackgroundTransparency=1
+        sf.BorderSizePixel=0
+        sf.Parent=self.mf
         
-        local titleLabel = Instance.new("TextLabel")
-        titleLabel.Name = "Title"
-        titleLabel.Size = UDim2.new(1, 0, 0, 16)
-        titleLabel.Position = UDim2.new(0, 0, 0, 4)
-        titleLabel.BackgroundTransparency = 1
-        titleLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-        titleLabel.TextSize = 11
-        titleLabel.Font = Enum.Font.GothamMedium
-        titleLabel.Text = i == 1 and "FPS" or (i == 2 and "PING" or "INFO")
-        titleLabel.TextXAlignment = Enum.TextXAlignment.Center
-        titleLabel.Parent = sectionFrame
+        local tl=Instance.new("TextLabel")
+        tl.Name="Title"
+        tl.Size=UDim2.new(1,0,0,16)
+        tl.Position=UDim2.new(0,0,0,4)
+        tl.BackgroundTransparency=1
+        tl.TextColor3=Color3.fromRGB(180,180,180)
+        tl.TextSize=11
+        tl.Font=Enum.Font.GothamMedium
+        tl.Text=i==1 and "FPS" or (i==2 and "PING" or "INFO")
+        tl.TextXAlignment=Enum.TextXAlignment.Center
+        tl.Parent=sf
         
-        local valueLabel = Instance.new("TextLabel")
-        valueLabel.Name = "Value"
-        valueLabel.Size = UDim2.new(1, 0, 0, 18)
-        valueLabel.Position = UDim2.new(0, 0, 0, 18)
-        valueLabel.BackgroundTransparency = 1
-        valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        valueLabel.TextSize = 13
-        valueLabel.Font = Enum.Font.GothamBold
-        valueLabel.Text = i == 1 and "0" or (i == 2 and "0ms" or "CV: 0")
-        valueLabel.TextXAlignment = Enum.TextXAlignment.Center
-        valueLabel.Parent = sectionFrame
+        local vl=Instance.new("TextLabel")
+        vl.Name="Value"
+        vl.Size=UDim2.new(1,0,0,18)
+        vl.Position=UDim2.new(0,0,0,18)
+        vl.BackgroundTransparency=1
+        vl.TextColor3=Color3.fromRGB(255,255,255)
+        vl.TextSize=13
+        vl.Font=Enum.Font.GothamBold
+        vl.Text=i==1 and "0" or (i==2 and "0ms" or "CV:0")
+        vl.TextXAlignment=Enum.TextXAlignment.Center
+        vl.Parent=sf
         
-        if i == 3 then
-            local button = Instance.new("TextButton")
-            button.Name = "ToggleButton"
-            button.Size = UDim2.new(1, 0, 1, 0)
-            button.Position = UDim2.new(0, 0, 0, 0)
-            button.BackgroundTransparency = 1
-            button.Text = ""
-            button.Parent = sectionFrame
+        if i==3 then
+            local b=Instance.new("TextButton")
+            b.Name="ToggleBtn"
+            b.Size=UDim2.new(1,0,1,0)
+            b.Position=UDim2.new(0,0,0,0)
+            b.BackgroundTransparency=1
+            b.Text=""
+            b.Parent=sf
             
-            table.insert(self.connections, button.MouseButton1Click:Connect(function()
-                self.showGameTime = not self.showGameTime
+            table.insert(self.connections,b.MouseButton1Click:Connect(function()
+                self.showGameTime=not self.showGameTime
                 self:UpdateInfo()
             end))
         end
         
-        if i < 3 then
-            local divider = Instance.new("Frame")
-            divider.Name = "Divider"
-            divider.Size = UDim2.new(0, 1, 0, 20)
-            divider.Position = UDim2.new(1, -1, 0.5, -10)
-            divider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            divider.BackgroundTransparency = 0.9
-            divider.BorderSizePixel = 0
-            divider.Parent = sectionFrame
+        if i<3 then
+            local d=Instance.new("Frame")
+            d.Name="Divider"
+            d.Size=UDim2.new(0,1,0,20)
+            d.Position=UDim2.new(1,-1,0.5,-10)
+            d.BackgroundColor3=Color3.fromRGB(255,255,255)
+            d.BackgroundTransparency=0.9
+            d.BorderSizePixel=0
+            d.Parent=sf
         end
         
-        self.sections[i] = {
-            frame = sectionFrame,
-            title = titleLabel,
-            value = valueLabel
+        self.secs[i]={
+            f=sf,
+            t=tl,
+            v=vl
         }
     end
     
-    self.sections[1].value.TextColor3 = Color3.fromRGB(85, 230, 130)
-    self.sections[2].value.TextColor3 = Color3.fromRGB(80, 170, 240)
-    self.sections[3].value.TextColor3 = Color3.fromRGB(180, 110, 230)
+    self.secs[1].v.TextColor3=Color3.fromRGB(85,230,130)
+    self.secs[2].v.TextColor3=Color3.fromRGB(80,170,240)
+    self.secs[3].v.TextColor3=Color3.fromRGB(180,110,230)
     
-    self.mainFrame.Parent = self.screenGui
-    self.screenGui.Parent = self.player:WaitForChild("PlayerGui")
+    self.mf.Parent=self.sg
+    self.sg.Parent=self.p:WaitForChild("PlayerGui")
     
     self:SetupConnections()
 end
 
-function DeltaHUD:SetupConnections()
-    table.insert(self.connections, RunService.RenderStepped:Connect(function(dt)
+function D:SetupConnections()
+    table.insert(self.connections,R.RenderStepped:Connect(function(dt)
         self:UpdateFPS(dt)
-        self.lastUpdate = self.lastUpdate + dt
-        if self.lastUpdate >= self.updateInterval then
+        self.lastUpdate=self.lastUpdate+dt
+        if self.lastUpdate>=self.updateInterval then
             self:UpdatePing()
             self:UpdateInfo()
-            self.lastUpdate = 0
+            self.lastUpdate=0
         end
     end))
     
-    table.insert(self.connections, UserInputService.InputBegan:Connect(function(input, processed)
-        if not processed and input.KeyCode == Enum.KeyCode.F5 then
-            self.showHUD = not self.showHUD
-            self.screenGui.Enabled = self.showHUD
+    table.insert(self.connections,U.InputBegan:Connect(function(i,pr)
+        if not pr and i.KeyCode==Enum.KeyCode.F5 then
+            self.showHUD=not self.showHUD
+            self.sg.Enabled=self.showHUD
         end
     end))
 end
 
-function DeltaHUD:UpdateFPS(dt)
-    self.fpsTime = self.fpsTime + dt
-    self.fpsCounter = self.fpsCounter + 1
-    if self.fpsTime >= 1 then
-        self.fps = math.floor(self.fpsCounter / self.fpsTime)
-        self.fpsCounter = 0
-        self.fpsTime = 0
-        self.sections[1].value.Text = tostring(self.fps)
+function D:UpdateFPS(dt)
+    self.fpsTime=self.fpsTime+dt
+    self.fpsCounter=self.fpsCounter+1
+    if self.fpsTime>=1 then
+        self.fps=math.floor(self.fpsCounter/self.fpsTime)
+        self.fpsCounter=0
+        self.fpsTime=0
+        self.secs[1].v.Text=tostring(self.fps)
     end
 end
 
-function DeltaHUD:UpdatePing()
-    local success, ping = pcall(function()
+function D:UpdatePing()
+    local suc,ping=pcall(function()
         return math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
     end)
-    self.sections[2].value.Text = (success and ping or -1) .. "ms"
+    self.secs[2].v.Text=(suc and ping or -1).."ms"
 end
 
-function DeltaHUD:UpdateInfo()
+function D:UpdateInfo()
     if self.showGameTime then
-        local elapsed = os.clock() - self.startTime
-        local minutes = math.floor(elapsed / 60)
-        local seconds = math.floor(elapsed % 60)
-        self.sections[3].value.Text = string.format("%02d:%02d", minutes, seconds)
+        local el=os.clock()-self.startTime
+        local m=math.floor(el/60)
+        local s=math.floor(el%60)
+        self.secs[3].v.Text=string.format("%02d:%02d",m,s)
     else
-        local camera = workspace.CurrentCamera
-        if camera then
-            local look = camera.CFrame.LookVector
-            local pitch = math.deg(math.asin(-look.Y))
-            local yaw = math.deg(math.atan2(-look.X, -look.Z))
-            self.sections[3].value.Text = string.format("%.0f°,%.0f°", yaw % 360, pitch)
+        local cam=W.CurrentCamera
+        if cam then
+            local l=cam.CFrame.LookVector
+            local p=math.deg(math.asin(-l.Y))
+            local y=math.deg(math.atan2(-l.X,-l.Z))
+            self.secs[3].v.Text=string.format("%.0f°,%.0f°",y%360,p)
         else
-            self.sections[3].value.Text = "CV: N/A"
+            self.secs[3].v.Text="CV:N/A"
         end
     end
 end
 
-function DeltaHUD:InitializeKillAura()
-    local function getRemoteEvents()
-        local remotes = {}
-        local success, netModule = pcall(function()
-            return require(ReplicatedStorage.Modules.Net)
-        end)
-        
-        if success and netModule then
-            if netModule.RemoteEvent then
-                remotes.RegisterAttack = netModule.RemoteEvent:FindFirstChild("RegisterAttack")
-                remotes.RegisterHit = netModule.RemoteEvent:FindFirstChild("RegisterHit")
-            elseif netModule.RE then
-                remotes.RegisterAttack = netModule.RE:FindFirstChild("RegisterAttack")
-                remotes.RegisterHit = netModule.RE:FindFirstChild("RegisterHit")
-            end
-        end
-        
-        if not remotes.RegisterAttack then
-            local netFolder = ReplicatedStorage:FindFirstChild("Modules")
-            if netFolder and netFolder:FindFirstChild("Net") then
-                local net = netFolder.Net
-                if net:FindFirstChild("RE") then
-                    remotes.RegisterAttack = net.RE:FindFirstChild("RegisterAttack")
-                    remotes.RegisterHit = net.RE:FindFirstChild("RegisterHit")
-                elseif net:FindFirstChild("RemoteEvent") then
-                    remotes.RegisterAttack = net.RemoteEvent:FindFirstChild("RegisterAttack")
-                    remotes.RegisterHit = net.RemoteEvent:FindFirstChild("RegisterHit")
-                end
-            end
-        end
-        
-        if not remotes.RegisterAttack then
-            remotes.RegisterAttack = ReplicatedStorage:FindFirstChild("RegisterAttack", true)
-        end
-        
-        if not remotes.RegisterHit then
-            remotes.RegisterHit = ReplicatedStorage:FindFirstChild("RegisterHit", true)
-        end
-        
-        return remotes
+function D:Destroy()
+    for _,c in ipairs(self.connections) do
+        c:Disconnect()
     end
     
-    task.spawn(function()
-        while task.wait(0.5) do
-            if self.player.Character then
-                local stun = self.player.Character:FindFirstChild("Stun")
-                if stun then stun.Value = 0 end
-                local busy = self.player.Character:FindFirstChild("Busy")
-                if busy then busy.Value = false end
-            end
-        end
-    end)
+    for _,c in ipairs(self.hlConnections) do
+        c:Disconnect()
+    end
     
-    task.spawn(function()
-        local remotes = getRemoteEvents()
-        
-        -- ВАЖНО: Добавить отладочный вывод
-        print("[DeltaHUD] Поиск RemoteEvents...")
-        print("[DeltaHUD] RegisterAttack найден:", remotes.RegisterAttack)
-        print("[DeltaHUD] RegisterHit найден:", remotes.RegisterHit)
-        
-        if not remotes.RegisterAttack then 
-            warn("[DeltaHUD] RemoteEvent 'RegisterAttack' не найден. KillAura отключен.")
-            return 
-        end
-        
-        local lastAttack = 0
-        
-        while task.wait(0) do
-            -- ВАЖНО: Проверьте правильность написания killAuraSettings
-            if not self.killAuraSettings.Enabled then
-                task.wait(0.1)
-                continue
-            end
-            
-            local currentTime = tick()
-            if currentTime - lastAttack < self.killAuraSettings.Cooldown then
-                continue
-            end
-            
-            if self.player.Character and self.player.Character:FindFirstChild("HumanoidRootPart") then
-                local characterPos = self.player.Character.HumanoidRootPart.Position
-                local targets = {}
-                
-                if self.killAuraSettings.FastAttack then
-                    if self.killAuraSettings.AttackNPC then
-                        for _, enemy in pairs(Workspace.Enemies:GetChildren()) do
-                            if #targets >= self.killAuraSettings.MaxTargets then break end
-                            if enemy:FindFirstChild("HumanoidRootPart") and enemy:FindFirstChildOfClass("Humanoid") then
-                                local distance = (enemy.HumanoidRootPart.Position - characterPos).Magnitude
-                                if distance <= self.killAuraSettings.Range and enemy:FindFirstChildOfClass("Humanoid").Health > 0 then
-                                    table.insert(targets, {target = enemy, part = enemy.HumanoidRootPart})
-                                end
-                            end
-                        end
-                    end
-                    
-                    if self.killAuraSettings.AttackPlayers then
-                        for _, targetPlayer in pairs(Players:GetPlayers()) do
-                            if #targets >= self.killAuraSettings.MaxTargets then break end
-                            if targetPlayer ~= self.player and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                                local targetCharacter = targetPlayer.Character
-                                if targetCharacter:FindFirstChildOfClass("Humanoid") then
-                                    local distance = (targetCharacter.HumanoidRootPart.Position - characterPos).Magnitude
-                                    local canAttack = true
-                                    
-                                    if self.killAuraSettings.TeamCheck and self.player.Team and targetPlayer.Team then
-                                        canAttack = self.player.Team ~= targetPlayer.Team
-                                    end
-                                    
-                                    if distance <= self.killAuraSettings.Range and canAttack and targetCharacter:FindFirstChildOfClass("Humanoid").Health > 0 then
-                                        table.insert(targets, {target = targetCharacter, part = targetCharacter.HumanoidRootPart})
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    
-                    if #targets > 0 then
-                        -- ДОБАВЬТЕ ПРОВЕРКУ
-                        if remotes.RegisterAttack then
-                            pcall(function()
-                                remotes.RegisterAttack:FireServer(1/0)
-                            end)
-                        else
-                            warn("[DeltaHUD] RegisterAttack равен nil!")
-                        end
-                        
-                        if remotes.RegisterHit and #targets > 0 then
-                            local mainTarget = targets[1]
-                            local extraTargets = {}
-                            
-                            for i = 2, #targets do
-                                table.insert(extraTargets, {targets[i].target, targets[i].part})
-                            end
-                            
-                            if self.killAuraSettings.MultiHit then
-                                for i = 1, math.min(3, #targets) do
-                                    pcall(function()
-                                        remotes.RegisterHit:FireServer(
-                                            targets[i].part, 
-                                            extraTargets,
-                                            nil,
-                                            tostring(tick()) .. i
-                                        )
-                                    end)
-                                end
-                            else
-                                pcall(function()
-                                    remotes.RegisterHit:FireServer(
-                                        mainTarget.part, 
-                                        extraTargets,
-                                        nil,
-                                        tostring(tick())
-                                    )
-                                end)
-                            end
-                        end
-                        
-                        lastAttack = currentTime
-                    end
-                else
-                    if self.killAuraSettings.AttackNPC then
-                        for _, enemy in pairs(Workspace.Enemies:GetChildren()) do
-                            if enemy:FindFirstChild("HumanoidRootPart") and enemy:FindFirstChildOfClass("Humanoid") then
-                                local distance = (enemy.HumanoidRootPart.Position - characterPos).Magnitude
-                                if distance <= self.killAuraSettings.Range and enemy:FindFirstChildOfClass("Humanoid").Health > 0 then
-                                    if remotes.RegisterAttack then
-                                        pcall(function()
-                                            remotes.RegisterAttack:FireServer(1)
-                                        end)
-                                    end
-                                    if remotes.RegisterHit then
-                                        pcall(function()
-                                            remotes.RegisterHit:FireServer(
-                                                enemy.HumanoidRootPart, 
-                                                {{enemy, enemy.HumanoidRootPart}},
-                                                nil,
-                                                tostring(tick())
-                                            )
-                                        end)
-                                    end
-                                    lastAttack = currentTime
-                                    break
-                                end
-                            end
-                        end
-                    end
-                    
-                    if self.killAuraSettings.AttackPlayers then
-                        for _, targetPlayer in pairs(Players:GetPlayers()) do
-                            if targetPlayer ~= self.player and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                                local targetCharacter = targetPlayer.Character
-                                if targetCharacter:FindFirstChildOfClass("Humanoid") then
-                                    local distance = (targetCharacter.HumanoidRootPart.Position - characterPos).Magnitude
-                                    local canAttack = true
-                                    
-                                    if self.killAuraSettings.TeamCheck and self.player.Team and targetPlayer.Team then
-                                        canAttack = self.player.Team ~= targetPlayer.Team
-                                    end
-                                    
-                                    if distance <= self.killAuraSettings.Range and canAttack and targetCharacter:FindFirstChildOfClass("Humanoid").Health > 0 then
-                                        if remotes.RegisterAttack then
-                                            pcall(function()
-                                                remotes.RegisterAttack:FireServer(1)
-                                            end)
-                                        end
-                                        if remotes.RegisterHit then
-                                            pcall(function()
-                                                remotes.RegisterHit:FireServer(
-                                                    targetCharacter.HumanoidRootPart,
-                                                    {{targetCharacter, targetCharacter.HumanoidRootPart}},
-                                                    nil,
-                                                    tostring(tick())
-                                                )
-                                            end)
-                                        end
-                                        lastAttack = currentTime
-                                        break
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end)
+    for pl,d in pairs(self.hlCache) do
+        if d.H then d.H:Destroy() end
+        if d.B then d.B:Destroy() end
+    end
+    
+    self.hlCache={}
+    
+    if self.sg then
+        self.sg:Destroy()
+    end
 end
 
-function DeltaHUD:toggleHighlighter()
-    self.highlighterSettings.Enabled = not self.highlighterSettings.Enabled
-    for _, data in pairs(self.highlightCache) do
-        if data.Highlight then
-            data.Highlight.Enabled = self.highlighterSettings.Enabled
-        end
-        if data.Billboard then
-            data.Billboard.Enabled = self.highlighterSettings.Enabled
-        end
-    end
-    return self.highlighterSettings.Enabled
-end
-
-function DeltaHUD:toggleKillAura()
-    self.killAuraSettings.Enabled = not self.killAuraSettings.Enabled
-    return self.killAuraSettings.Enabled
-end
-
-function DeltaHUD:setKillAuraRange(range)
-    if type(range) == "number" and range > 0 then
-        self.killAuraSettings.Range = range
-        return true
-    end
-    return false
-end
-
-function DeltaHUD:setFastAttack(enabled)
-    if type(enabled) == "boolean" then
-        self.killAuraSettings.FastAttack = enabled
-        return true
-    end
-    return false
-end
-
-function DeltaHUD:setMultiHit(enabled)
-    if type(enabled) == "boolean" then
-        self.killAuraSettings.MultiHit = enabled
-        return true
-    end
-    return false
-end
-
-function DeltaHUD:setMaxTargets(maxTargets)
-    if type(maxTargets) == "number" and maxTargets > 0 then
-        self.killAuraSettings.MaxTargets = maxTargets
-        return true
-    end
-    return false
-end
-
-function DeltaHUD:Destroy()
-    for _, conn in pairs(self.connections) do
-        conn:Disconnect()
-    end
-    for _, conn in pairs(self.highlighterConnections) do
-        conn:Disconnect()
-    end
-    for _, data in pairs(self.highlightCache) do
-        if data.Highlight then data.Highlight:Destroy() end
-        if data.Billboard then data.Billboard:Destroy() end
-    end
-    if self.screenGui then
-        self.screenGui:Destroy()
-    end
-    getgenv()._DeltaHUDInstance = nil
-end
-
-local hud = DeltaHUD.new()
-return hud
+return D.new()
