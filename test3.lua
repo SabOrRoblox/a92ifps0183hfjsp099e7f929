@@ -18,211 +18,614 @@ function D.new()
     local self=setmetatable({},D)
     
     self.p=P.LocalPlayer
-    self.showHUD=true
-    self.lastUpdate=0
-    self.updateInterval=0.3
-    self.fps=0
-    self.fpsCounter=0
-    self.fpsTime=0
-    self.startTime=os.clock()
-    self.showGameTime=false
-    self.connections={}
-    self.highlighterConnections={}
-    self.highlightCache={}
-    self.speedEnabled=false
-    self.espEnabled=false
-    self.fruitESP={}
-    self.farmFruits=false
-    self.currentFruit=nil
-    self.platforms={}
-    self.speedValue=100
-    self.speedStep=1
+    self.s=true
+    self.u=0
+    self.i=0.3
+    self.f=0
+    self.c=0
+    self.t=0
+    self.st=os.clock()
+    self.g=false
+    self.cx={}
+    self.hx={}
+    self.hc={}
+    self.te=false
+    self.ka=false
     
-    self.highlighterSettings={
-        Enabled=true,
-        OutlineColor=Color3.fromRGB(85,170,255),
-        OutlineTransparency=0,
-        OutlineThickness=3,
-        NameTagColor=Color3.fromRGB(255,255,255),
-        NameTagOutlineColor=Color3.fromRGB(0,0,0),
-        NameTagSize=14,
-        NameTagFont=Enum.Font.GothamMedium,
-        NameTagOffset=Vector3.new(0,8.5,0),
-        TeamColor=false,
-        ShowDistance=true,
-        MaxDistance=10000,
-        ShowHPBar=true
+    self.hs={
+        e=true,
+        oc=Color3.fromRGB(85,170,255),
+        ot=0,
+        oth=3,
+        ntc=Color3.fromRGB(255,255,255),
+        nto=Color3.fromRGB(0,0,0),
+        ns=14,
+        nf=Enum.Font.GothamMedium,
+        no=Vector3.new(0,8.5,0),
+        tc=false,
+        sd=true,
+        md=10000,
+        sh=true
     }
     
     getgenv()._DeltaHUDInstance=self
     
-    self:Initialize()
-    self:InitializeHighlighter()
-    self:InitializeSpeed()
-    self:InitializeFruitESP()
+    self:I()
+    self:IH()
+    self:ISB()
+    self:ITB()
+    self:IKA()
     
     return self
 end
 
-function D:InitializeSpeed()
-    local function applySpeed()
+function D:ISB()
+    local b=Instance.new("TextButton")
+    b.Name="SaveBtn"
+    b.Size=UDim2.new(0,85,0,38)
+    b.Position=UDim2.new(0.5,180,0,12)
+    b.BackgroundColor3=Color3.fromRGB(20,20,30)
+    b.BackgroundTransparency=0.1
+    b.Text="SAVE"
+    b.TextColor3=Color3.fromRGB(255,255,255)
+    b.TextSize=13
+    b.Font=Enum.Font.GothamBold
+    b.BorderSizePixel=0
+    
+    local c=Instance.new("UICorner")
+    c.CornerRadius=UDim.new(0,6)
+    c.Parent=b
+    
+    local s=Instance.new("UIStroke")
+    s.Color=Color3.fromRGB(85,170,255)
+    s.Thickness=1.5
+    s.Parent=b
+    
+    local hf=Instance.new("Frame")
+    hf.Size=UDim2.new(1,0,1,0)
+    hf.BackgroundColor3=Color3.fromRGB(85,170,255)
+    hf.BackgroundTransparency=0.9
+    hf.BorderSizePixel=0
+    hf.Visible=false
+    hf.Parent=b
+    
+    local hc=Instance.new("UICorner")
+    hc.CornerRadius=UDim.new(0,6)
+    hc.Parent=hf
+    
+    b.MouseEnter:Connect(function()
+        hf.Visible=true
+        s.Thickness=2
+    end)
+    
+    b.MouseLeave:Connect(function()
+        hf.Visible=false
+        s.Thickness=1.5
+    end)
+    
+    local dg,di,sp,dp
+    
+    b.InputBegan:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseButton1 then
+            dg=true
+            dp=i.Position
+            sp=b.Position
+        end
+    end)
+    
+    b.InputEnded:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseButton1 then
+            dg=false
+        end
+    end)
+    
+    b.InputChanged:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseMovement then
+            di=i
+        end
+    end)
+    
+    U.InputChanged:Connect(function(i)
+        if dg and i==di then
+            local dl=i.Position-dp
+            b.Position=UDim2.new(sp.X.Scale,sp.X.Offset+dl.X,
+                               sp.Y.Scale,sp.Y.Offset+dl.Y)
+        end
+    end)
+    
+    b.MouseButton1Click:Connect(function()
+        self:SP()
+    end)
+    
+    b.Parent=self.sg
+end
+
+function D:ITB()
+    local b=Instance.new("TextButton")
+    b.Name="TurboBtn"
+    b.Size=UDim2.new(0,85,0,38)
+    b.Position=UDim2.new(0.5,270,0,12)
+    b.BackgroundColor3=Color3.fromRGB(20,20,30)
+    b.BackgroundTransparency=0.1
+    b.Text="TURBO"
+    b.TextColor3=Color3.fromRGB(255,170,85)
+    b.TextSize=13
+    b.Font=Enum.Font.GothamBold
+    b.BorderSizePixel=0
+    
+    local c=Instance.new("UICorner")
+    c.CornerRadius=UDim.new(0,6)
+    c.Parent=b
+    
+    local s=Instance.new("UIStroke")
+    s.Color=Color3.fromRGB(255,170,85)
+    s.Thickness=1.5
+    s.Parent=b
+    
+    local hf=Instance.new("Frame")
+    hf.Size=UDim2.new(1,0,1,0)
+    hf.BackgroundColor3=Color3.fromRGB(255,170,85)
+    hf.BackgroundTransparency=0.9
+    hf.BorderSizePixel=0
+    hf.Visible=false
+    hf.Parent=b
+    
+    local hc=Instance.new("UICorner")
+    hc.CornerRadius=UDim.new(0,6)
+    hc.Parent=hf
+    
+    b.MouseEnter:Connect(function()
+        hf.Visible=true
+        s.Thickness=2
+    end)
+    
+    b.MouseLeave:Connect(function()
+        hf.Visible=false
+        s.Thickness=1.5
+    end)
+    
+    local dg,di,sp,dp
+    
+    b.InputBegan:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseButton1 then
+            dg=true
+            dp=i.Position
+            sp=b.Position
+        end
+    end)
+    
+    b.InputEnded:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseButton1 then
+            dg=false
+        end
+    end)
+    
+    b.InputChanged:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseMovement then
+            di=i
+        end
+    end)
+    
+    U.InputChanged:Connect(function(i)
+        if dg and i==di then
+            local dl=i.Position-dp
+            b.Position=UDim2.new(sp.X.Scale,sp.X.Offset+dl.X,
+                               sp.Y.Scale,sp.Y.Offset+dl.Y)
+        end
+    end)
+    
+    b.MouseButton1Click:Connect(function()
+        self.te=not self.te
+        if self.te then
+            b.Text="TURBO:ON"
+            b.TextColor3=Color3.fromRGB(85,255,85)
+            s.Color=Color3.fromRGB(85,255,85)
+            self:AT()
+        else
+            b.Text="TURBO"
+            b.TextColor3=Color3.fromRGB(255,170,85)
+            s.Color=Color3.fromRGB(255,170,85)
+        end
+    end)
+    
+    b.Parent=self.sg
+end
+
+function D:AT()
+    if not self.te then return end
+    
+    local hc
+    hc=R.Heartbeat:Connect(function()
+        if not self.te then
+            hc:Disconnect()
+            return
+        end
+        
         local c=self.p.Character
         if not c then return end
-        local h=c:FindFirstChild("Humanoid")
-        local r=c:FindFirstChild("HumanoidRootPart")
-        if not h or not r then return end
         
-        h.WalkSpeed=self.speedEnabled and self.speedValue or 16
+        local h=c:FindFirstChildOfClass("Humanoid")
+        if not h then return end
         
-        if self.speedEnabled then
-            local bv=r:FindFirstChild("DeltaSpeedBV")
-            if not bv then
-                bv=Instance.new("BodyVelocity")
-                bv.Name="DeltaSpeedBV"
-                bv.MaxForce=Vector3.new(100000,0,100000)
-                bv.Velocity=Vector3.new(0,0,0)
-                bv.P=r
-            end
-        else
-            local bv=r:FindFirstChild("DeltaSpeedBV")
-            if bv then bv:Destroy() end
+        h.WalkSpeed=110
+    end)
+    
+    table.insert(self.cx,hc)
+end
+
+function D:SP()
+    local c=self.p.Character
+    if not c then return end
+    local h=c:FindFirstChild("HumanoidRootPart")
+    if not h then return end
+    
+    local op=h.Position
+    local th=3000
+    local np=op+Vector3.new(0,th,0)
+    local spd=250
+    local d=(np-op).Magnitude
+    local tt=d/spd
+    
+    for _,v in pairs(c:GetDescendants()) do
+        if v:IsA("BasePart") then
+            v.CanCollide=false
         end
     end
     
-    table.insert(self.connections,R.Heartbeat:Connect(function()
-        if self.speedEnabled then
-            self.speedValue=math.min(self.speedValue+self.speedStep,100)
-            applySpeed()
-        end
-    end))
+    local ti=TweenInfo.new(tt,Enum.EasingStyle.Linear,Enum.EasingDirection.Out,0,false,0)
+    local t=T:Create(h,ti,{CFrame=CFrame.new(np)})
+    t:Play()
     
-    self.p.CharacterAdded:Connect(applySpeed)
-    if self.p.Character then applySpeed() end
+    task.wait(tt)
+    
+    local pl=Instance.new("Part")
+    pl.Name="SavePlatform"
+    pl.Size=Vector3.new(100,5,100)
+    pl.Position=Vector3.new(op.X,op.Y-10,op.Z)
+    pl.Anchored=true
+    pl.CanCollide=true
+    pl.Transparency=0.3
+    pl.Color=Color3.fromRGB(85,170,255)
+    pl.Material=Enum.Material.Neon
+    
+    local pt=Instance.new("PointLight")
+    pt.Brightness=0.5
+    pt.Range=50
+    pt.Color=Color3.fromRGB(85,170,255)
+    pt.Parent=pl
+    
+    pl.Parent=W
+    
+    local rp=pl.Position+Vector3.new(0,10,0)
+    local rd=(h.Position-rp).Magnitude
+    local rt=rd/spd
+    
+    local rti=TweenInfo.new(rt,Enum.EasingStyle.Quad,Enum.EasingDirection.Out)
+    local rt=T:Create(h,rti,{CFrame=CFrame.new(rp)})
+    rt:Play()
+    
+    task.wait(rt)
+    
+    task.delay(20,function()
+        if pl and pl.Parent then
+            pl:Destroy()
+        end
+    end)
 end
 
-function D:InitializeFruitESP()
-    local function updateFruitESP()
-        for f,_ in pairs(self.fruitESP) do
-            if not f or not f.Parent then
-                self.fruitESP[f]=nil
-            end
+function D:IKA()
+    local r={}
+    local su,n=pcall(function()
+        return require(S.Modules.Net)
+    end)
+    
+    if su and n then
+        if n.RemoteEvent then
+            r.Attack=n:RemoteEvent("RegisterAttack")
+            r.Hit=n:RemoteEvent("RegisterHit",true)
+        elseif n.RE then
+            r.Attack=n.RE:WaitForChild("RegisterAttack")
+            r.Hit=n.RE:WaitForChild("RegisterHit")
         end
-        
-        if not self.espEnabled then return end
-        
-        local fruitsFolder=W:FindFirstChild("Fruits") or W:FindFirstChild("Fruit") or W:FindFirstChild("Drops")
-        if not fruitsFolder then return end
+    end
+    
+    local hc
+    hc=R.Heartbeat:Connect(function()
+        if not self.ka then return end
         
         local c=self.p.Character
-        local r=c and c:FindFirstChild("HumanoidRootPart")
-        if not r then return end
+        if not c then return end
         
-        for _,f in pairs(fruitsFolder:GetChildren()) do
-            if f:IsA("BasePart") or (f:IsA("Model") and f.PrimaryPart) then
-                local pos=f:IsA("BasePart") and f.Position or f.PrimaryPart.Position
-                local dist=(pos-r.Position).Magnitude
-                
-                if dist<300 then
-                    if not self.fruitESP[f] then
-                        local h=Instance.new("Highlight")
-                        h.Name="FruitESP"
-                        h.Adornee=f
-                        h.FillColor=Color3.fromRGB(255,255,0)
-                        h.FillTransparency=0.7
-                        h.OutlineColor=Color3.fromRGB(255,100,0)
-                        h.OutlineTransparency=0
-                        h.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
-                        h.Parent=f
-                        
-                        local b=Instance.new("BillboardGui")
-                        b.Name="FruitTag"
-                        b.Adornee=f:IsA("BasePart") and f or f.PrimaryPart
-                        b.Size=UDim2.new(0,200,0,30)
-                        b.StudsOffset=Vector3.new(0,3,0)
-                        b.AlwaysOnTop=true
-                        b.MaxDistance=1000
-                        
-                        local t=Instance.new("TextLabel")
-                        t.Name="Label"
-                        t.Size=UDim2.new(1,0,1,0)
-                        t.BackgroundTransparency=1
-                        t.TextColor3=Color3.fromRGB(255,255,0)
-                        t.TextStrokeColor3=Color3.fromRGB(0,0,0)
-                        t.TextStrokeTransparency=0
-                        t.TextSize=14
-                        t.Font=Enum.Font.GothamBold
-                        t.Text=f.Name~="" and string.format("{ %s } | %dm",f.Name,math.floor(dist)) or "{ ??? } | "..math.floor(dist).."m"
-                        t.Parent=b
-                        b.Parent=f
-                        
-                        self.fruitESP[f]={h=h,b=b}
-                    else
-                        local tag=self.fruitESP[f].b
-                        if tag and tag.Label then
-                            tag.Label.Text=f.Name~="" and string.format("{ %s } | %dm",f.Name,math.floor(dist)) or "{ ??? } | "..math.floor(dist).."m"
-                            tag.Label.TextColor3=dist>200 and Color3.fromRGB(255,50,50) or Color3.fromRGB(255,255,0)
+        local h=c:FindFirstChild("HumanoidRootPart")
+        if not h then return end
+        
+        local p=h.Position
+        local ti=false
+        
+        for _,e in pairs(W.Enemies:GetChildren()) do
+            if e:FindFirstChild("HumanoidRootPart") and e:FindFirstChildOfClass("Humanoid") then
+                local d=(e.HumanoidRootPart.Position-p).Magnitude
+                if d<30 and e:FindFirstChildOfClass("Humanoid").Health>0 then
+                    ti=true
+                    break
+                end
+            end
+        end
+        
+        if not ti then
+            for _,pl in pairs(P:GetPlayers()) do
+                if pl~=self.p and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart") then
+                    local tc=pl.Character
+                    local d=(tc.HumanoidRootPart.Position-p).Magnitude
+                    if d<30 and tc:FindFirstChildOfClass("Humanoid").Health>0 then
+                        if not self.p.Team or not pl.Team or self.p.Team~=pl.Team then
+                            ti=true
+                            break
                         end
                     end
-                elseif self.fruitESP[f] then
-                    self.fruitESP[f].h:Destroy()
-                    self.fruitESP[f].b:Destroy()
-                    self.fruitESP[f]=nil
                 end
+            end
+        end
+        
+        if ti and r.Attack then
+            local sn=c:FindFirstChild("Stun")
+            if sn then sn.Value=0 end
+            local by=c:FindFirstChild("Busy")
+            if by then by.Value=false end
+            
+            for i=1,3 do
+                pcall(function()
+                    r.Attack:FireServer(1)
+                end)
+                task.wait(0.01)
+            end
+        end
+    end)
+    
+    table.insert(self.cx,hc)
+    
+    table.insert(self.cx,U.InputBegan:Connect(function(i,gp)
+        if not gp and i.KeyCode==Enum.KeyCode.F6 then
+            self.ka=not self.ka
+        end
+    end))
+end
+
+function D:IH()
+    for p,d in pairs(self.hc) do
+        if d.H then d.H:Destroy() end
+        if d.B then d.B:Destroy() end
+    end
+    
+    self.hc={}
+    
+    for _,p in ipairs(P:GetPlayers()) do
+        if p~=self.p then
+            self:PA(p)
+        end
+    end
+    
+    table.insert(self.hx,P.PlayerAdded:Connect(function(p)
+        self:PA(p)
+    end))
+    
+    table.insert(self.hx,P.PlayerRemoving:Connect(function(p)
+        self:PR(p)
+    end))
+    
+    R.Heartbeat:Connect(function()
+        if not self.hs.e then return end
+        for p,hd in pairs(self.hc) do
+            if not self:UNT(hd) then
+                self.hc[p]=nil
+            end
+        end
+    end)
+end
+
+function D:CHB(m)
+    local b=Instance.new("Frame")
+    b.Name="HPBar"
+    b.Size=UDim2.new(1.5,0,0,6)
+    b.Position=UDim2.new(-0.25,0,0,-12)
+    b.BackgroundColor3=Color3.fromRGB(60,60,60)
+    b.BorderSizePixel=0
+    
+    local c=Instance.new("UICorner")
+    c.CornerRadius=UDim.new(0,3)
+    c.Parent=b
+    
+    local f=Instance.new("Frame")
+    f.Name="Fill"
+    f.Size=UDim2.new(1,0,1,0)
+    f.BackgroundColor3=Color3.fromRGB(0,255,0)
+    f.BorderSizePixel=0
+    f.Parent=b
+    
+    local fc=Instance.new("UICorner")
+    fc.CornerRadius=UDim.new(0,3)
+    fc.Parent=f
+    
+    return b
+end
+
+function D:CHL(m,p)
+    if not m or not m:IsA("Model") then return nil end
+    
+    local h=Instance.new("Highlight")
+    h.Name="PlayerHighlight"
+    h.Adornee=m
+    h.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
+    h.FillTransparency=1
+    h.OutlineColor=self.hs.oc
+    h.OutlineTransparency=self.hs.ot
+    h.Enabled=self.hs.e
+    
+    if self.hs.tc and p.Team then
+        h.OutlineColor=p.Team.TeamColor.Color
+    end
+    
+    h.Parent=m
+    
+    local b=Instance.new("BillboardGui")
+    b.Name="PlayerNameTag"
+    b.Adornee=m:FindFirstChild("Head") or m.PrimaryPart or m
+    b.Size=UDim2.new(0,200,0,50)
+    b.StudsOffset=Vector3.new(0,8.5,0)
+    b.AlwaysOnTop=true
+    b.MaxDistance=self.hs.md
+    b.Enabled=self.hs.e
+    
+    local t=Instance.new("TextLabel")
+    t.Name="NameText"
+    t.Size=UDim2.new(1,0,1,0)
+    t.BackgroundTransparency=1
+    t.TextColor3=self.hs.ntc
+    t.TextSize=self.hs.ns
+    t.Font=self.hs.nf
+    t.TextStrokeTransparency=0
+    t.TextStrokeColor3=self.hs.nto
+    t.Text=p.Name
+    t.TextYAlignment=Enum.TextYAlignment.Center
+    t.Parent=b
+    b.Parent=m
+    
+    local hb
+    if self.hs.sh then
+        hb=self:CHB(b)
+        hb.Parent=b
+        t.Position=UDim2.new(0,0,0,10)
+        t.Size=UDim2.new(1,0,0,20)
+    end
+    
+    return {
+        H=h,
+        B=b,
+        P=p,
+        M=m,
+        HPBar=hb
+    }
+end
+
+function D:UNT(hd)
+    if not hd or not hd.M or not hd.M.PrimaryPart then
+        return false
+    end
+    
+    local p=hd.P
+    local m=hd.M
+    local b=hd.B
+    local h=hd.H
+    
+    if not p or p.Parent~=P or not m.Parent then
+        if h then h:Destroy() end
+        if b then b:Destroy() end
+        return false
+    end
+    
+    local d=(self.p.Character and m.PrimaryPart and 
+             (self.p.Character.PrimaryPart.Position - m.PrimaryPart.Position).Magnitude) or 0
+    
+    if d>self.hs.md then
+        h.Enabled=false
+        b.Enabled=false
+        return true
+    end
+    
+    h.Enabled=self.hs.e
+    b.Enabled=self.hs.e
+    
+    local ht=""
+    local hp=1
+    local hm=m:FindFirstChildOfClass("Humanoid")
+    
+    if hm then
+        local hh=math.floor(hm.Health)
+        local mh=math.floor(hm.MaxHealth)
+        ht=string.format("[%d/%d]",hh,mh)
+        hp=math.max(0,math.min(1,hm.Health/hm.MaxHealth))
+    else
+        local dt=m:FindFirstChild("Data")
+        if dt then
+            local lv=dt:FindFirstChild("Level")
+            if lv then
+                ht=string.format("[LVL:%d]",lv.Value)
             end
         end
     end
     
-    table.insert(self.connections,R.Heartbeat:Connect(function()
-        if self.farmFruits then
-            local c=self.p.Character
-            local r=c and c:FindFirstChild("HumanoidRootPart")
-            if not r then return end
-            
-            local closest=nil
-            local minDist=math.huge
-            
-            local fruitsFolder=W:FindFirstChild("Fruits") or W:FindFirstChild("Fruit") or W:FindFirstChild("Drops")
-            if not fruitsFolder then return end
-            
-            for _,f in pairs(fruitsFolder:GetChildren()) do
-                if f:IsA("BasePart") or (f:IsA("Model") and f.PrimaryPart) then
-                    local pos=f:IsA("BasePart") and f.Position or f.PrimaryPart.Position
-                    local dist=(pos-r.Position).Magnitude
-                    if dist<minDist then
-                        minDist=dist
-                        closest=f
-                    end
-                end
-            end
-            
-            if closest then
-                local pos=closest:IsA("BasePart") and closest.Position or closest.PrimaryPart.Position
-                local bv=r:FindFirstChild("DeltaFlyBV")
-                if not bv then
-                    bv=Instance.new("BodyVelocity")
-                    bv.Name="DeltaFlyBV"
-                    bv.MaxForce=Vector3.new(100000,100000,100000)
-                    bv.P=r
-                end
-                
-                local dir=(pos-r.Position).Unit
-                bv.Velocity=dir*400
-                self.currentFruit=closest
-            elseif self.currentFruit then
-                local bv=r:FindFirstChild("DeltaFlyBV")
-                if bv then bv.Velocity=Vector3.new(0,0,0) end
-                self.currentFruit=nil
-            end
+    if b and b.NameText then
+        if self.hs.sd then
+            b.NameText.Text=string.format("%s [%dm]\n<font color='#00FF00'>%s</font>", 
+                p.Name, 
+                math.floor(d), 
+                ht)
         else
-            local bv=self.p.Character and self.p.Character:FindFirstChild("HumanoidRootPart"):FindFirstChild("DeltaFlyBV")
-            if bv then bv:Destroy() end
+            b.NameText.Text=string.format("%s\n<font color='#00FF00'>%s</font>",p.Name,ht)
         end
-        
-        updateFruitESP()
-    end))
+        b.NameText.RichText=true
+    end
+    
+    if hd.HPBar then
+        hd.HPBar.Fill.Size=UDim2.new(hp,0,1,0)
+    end
+    
+    if self.hs.tc and p.Team then
+        h.OutlineColor=p.Team.TeamColor.Color
+    end
+    
+    return true
 end
 
-function D:Initialize()
+function D:PA(p)
+    if p==self.p then return end
+    
+    local function ca(c)
+        if not c then return end
+        task.wait(0.5)
+        if c and c:IsA("Model") then
+            if self.hc[p] then
+                local o=self.hc[p]
+                if o.H then o.H:Destroy() end
+                if o.B then o.B:Destroy() end
+            end
+            local hd=self:CHL(c,p)
+            if hd then
+                self.hc[p]=hd
+            end
+        end
+    end
+    
+    local cn=p.CharacterAdded:Connect(ca)
+    table.insert(self.hx,cn)
+    
+    if p.Character then
+        ca(p.Character)
+    end
+    
+    local rc=p.AncestryChanged:Connect(function(_,pa)
+        if not pa then
+            if self.hc[p] then
+                local d=self.hc[p]
+                if d.H then d.H:Destroy() end
+                if d.B then d.B:Destroy() end
+                self.hc[p]=nil
+            end
+        end
+    end)
+    table.insert(self.hx,rc)
+end
+
+function D:PR(p)
+    if self.hc[p] then
+        local d=self.hc[p]
+        if d.H then d.H:Destroy() end
+        if d.B then d.B:Destroy() end
+        self.hc[p]=nil
+    end
+end
+
+function D:I()
     if self.p.PlayerGui:FindFirstChild("DeltaHUD") then
         self.p.PlayerGui.DeltaHUD:Destroy()
     end
@@ -245,7 +648,13 @@ function D:Initialize()
     c.CornerRadius=UDim.new(0,6)
     c.Parent=self.mf
     
-    self.secs={}
+    local s=Instance.new("UIStroke")
+    s.Color=Color3.fromRGB(255,255,255)
+    s.Transparency=0.85
+    s.Thickness=1
+    s.Parent=self.mf
+    
+    self.sx={}
     local w=100
     
     for i=1,3 do
@@ -282,13 +691,18 @@ function D:Initialize()
         vl.Parent=sf
         
         if i==3 then
-            local btn=Instance.new("TextButton")
-            btn.Name="ToggleBtn"
-            btn.Size=UDim2.new(1,0,1,0)
-            btn.Position=UDim2.new(0,0,0,0)
-            btn.BackgroundTransparency=1
-            btn.Text=""
-            btn.Parent=sf
+            local b=Instance.new("TextButton")
+            b.Name="ToggleBtn"
+            b.Size=UDim2.new(1,0,1,0)
+            b.Position=UDim2.new(0,0,0,0)
+            b.BackgroundTransparency=1
+            b.Text=""
+            b.Parent=sf
+            
+            table.insert(self.cx,b.MouseButton1Click:Connect(function()
+                self.g=not self.g
+                self:UI()
+            end))
         end
         
         if i<3 then
@@ -302,530 +716,98 @@ function D:Initialize()
             d.Parent=sf
         end
         
-        self.secs[i]={f=sf,t=tl,v=vl}
+        self.sx[i]={
+            f=sf,
+            t=tl,
+            v=vl
+        }
     end
     
-    self:CreateButtons()
+    self.sx[1].v.TextColor3=Color3.fromRGB(85,230,130)
+    self.sx[2].v.TextColor3=Color3.fromRGB(80,170,240)
+    self.sx[3].v.TextColor3=Color3.fromRGB(180,110,230)
+    
     self.mf.Parent=self.sg
     self.sg.Parent=self.p:WaitForChild("PlayerGui")
     
-    self:SetupConnections()
+    self:SC()
 end
 
-function D:CreateButtons()
-    local btnFrame=Instance.new("Frame")
-    btnFrame.Name="Buttons"
-    btnFrame.Size=UDim2.new(0,350,0,80)
-    btnFrame.Position=UDim2.new(0.5,-175,0,60)
-    btnFrame.BackgroundTransparency=1
-    btnFrame.Parent=self.sg
-    
-    local buttons={
-        {name="Speed", color=Color3.fromRGB(85,170,255), toggle="speedEnabled"},
-        {name="Esp/Farm", color=Color3.fromRGB(255,170,0), toggle="espEnabled"},
-        {name="Farm Fruits", color=Color3.fromRGB(255,85,85), toggle="farmFruits"},
-        {name="Save Pos", color=Color3.fromRGB(0,200,0), func="SavePosition"}
-    }
-    
-    for i,btnData in ipairs(buttons) do
-        local btn=Instance.new("TextButton")
-        btn.Name=btnData.name
-        btn.Size=UDim2.new(0,80,0,30)
-        btn.Position=UDim2.new(0,(i-1)*85,0,0)
-        btn.BackgroundColor3=btnData.color
-        btn.BackgroundTransparency=0.2
-        btn.Text=btnData.name
-        btn.TextColor3=Color3.fromRGB(255,255,255)
-        btn.TextSize=12
-        btn.Font=Enum.Font.GothamBold
-        btn.BorderSizePixel=0
-        
-        local c=Instance.new("UICorner")
-        c.CornerRadius=UDim.new(0,6)
-        c.Parent=btn
-        
-        if btnData.toggle then
-            btn.MouseButton1Click:Connect(function()
-                self[btnData.toggle]=not self[btnData.toggle]
-                btn.BackgroundTransparency=self[btnData.toggle] and 0 or 0.2
-            end)
-        elseif btnData.func then
-            btn.MouseButton1Click:Connect(function()
-                self[btnData.func]()
-            end)
-        end
-        
-        if btnData.toggle=="farmFruits" then
-            btn.MouseButton1Click:Connect(function()
-                self.espEnabled=true
-                for _,esp in pairs(self.fruitESP) do
-                    if esp.h then esp.h.Enabled=true end
-                    if esp.b then esp.b.Enabled=true end
-                end
-            end)
-        end
-        
-        btn.Parent=btnFrame
-    end
-    
-    local platBtn=Instance.new("TextButton")
-    platBtn.Name="HighPlatform"
-    platBtn.Size=UDim2.new(0,80,0,30)
-    platBtn.Position=UDim2.new(0,0,0,40)
-    platBtn.BackgroundColor3=Color3.fromRGB(170,85,255)
-    platBtn.BackgroundTransparency=0.2
-    platBtn.Text="High Platform"
-    platBtn.TextColor3=Color3.fromRGB(255,255,255)
-    platBtn.TextSize=12
-    platBtn.Font=Enum.Font.GothamBold
-    platBtn.BorderSizePixel=0
-    
-    local c2=Instance.new("UICorner")
-    c2.CornerRadius=UDim.new(0,6)
-    c2.Parent=platBtn
-    
-    platBtn.MouseButton1Click:Connect(function()
-        self:CreateHighPlatform()
-    end)
-    platBtn.Parent=btnFrame
-end
-
-function D:SavePosition()
-    local c=self.p.Character
-    if not c then return end
-    local r=c:FindFirstChild("HumanoidRootPart")
-    if not r then return end
-    
-    for _,p in pairs(self.platforms) do
-        if p then p:Destroy() end
-    end
-    self.platforms={}
-    
-    local origPos=r.Position
-    local plat=Instance.new("Part")
-    plat.Name="DeltaPlatform"
-    plat.Size=Vector3.new(100,1,100)
-    plat.Position=origPos
-    plat.Anchored=true
-    plat.CanCollide=true
-    plat.Transparency=0.3
-    plat.Color=Color3.fromRGB(85,170,255)
-    plat.Material=Enum.Material.Neon
-    plat.Parent=W
-    table.insert(self.platforms,plat)
-    
-    r.CFrame=CFrame.new(origPos+Vector3.new(0,5,0))
-end
-
-function D:CreateHighPlatform()
-    local c=self.p.Character
-    if not c then return end
-    local r=c:FindFirstChild("HumanoidRootPart")
-    if not r then return end
-    
-    for _,p in pairs(self.platforms) do
-        if p then p:Destroy() end
-    end
-    self.platforms={}
-    
-    local targetPos=r.Position+Vector3.new(0,2500,0)
-    local plat=Instance.new("Part")
-    plat.Name="DeltaHighPlatform"
-    plat.Size=Vector3.new(100,1,100)
-    plat.Position=targetPos
-    plat.Anchored=true
-    plat.CanCollide=true
-    plat.Transparency=0.3
-    plat.Color=Color3.fromRGB(255,85,170)
-    plat.Material=Enum.Material.Neon
-    plat.Parent=W
-    table.insert(self.platforms,plat)
-    
-    local bv=r:FindFirstChild("DeltaPlatformBV")
-    if not bv then
-        bv=Instance.new("BodyVelocity")
-        bv.Name="DeltaPlatformBV"
-        bv.MaxForce=Vector3.new(100000,100000,100000)
-        bv.P=r
-    end
-    
-    local dir=(targetPos-r.Position).Unit
-    bv.Velocity=dir*350
-    
-    R.Heartbeat:Connect(function()
-        if not bv then return end
-        local dist=(targetPos-r.Position).Magnitude
-        if dist<10 then
-            bv:Destroy()
-            r.CFrame=CFrame.new(targetPos+Vector3.new(0,5,0))
-        else
-            dir=(targetPos-r.Position).Unit
-            bv.Velocity=dir*350
-        end
-    end)
-end
-
-function D:InitializeFastAttack()
-    local remotes={}
-    local success,netModule=pcall(function() return require(S.Modules.Net) end)
-    
-    if success and netModule then
-        if netModule.RemoteEvent then
-            remotes.Attack=netModule:RemoteEvent("RegisterAttack")
-            remotes.Hit=netModule:RemoteEvent("RegisterHit",true)
-        elseif netModule.RE then
-            remotes.Attack=netModule.RE:WaitForChild("RegisterAttack")
-            remotes.Hit=netModule.RE:WaitForChild("RegisterHit")
-        end
-    end
-    
-    task.spawn(function()
-        local lastAttack=0
-        while task.wait(0) do
-            local now=tick()
-            if now-lastAttack<0.05 then continue end
-            
-            local c=self.p.Character
-            if not c then continue end
-            local r=c:FindFirstChild("HumanoidRootPart")
-            if not r then continue end
-            
-            local stun=c:FindFirstChild("Stun")
-            if stun then stun.Value=0 end
-            local busy=c:FindFirstChild("Busy")
-            if busy then busy.Value=false end
-            
-            local targets={}
-            local pos=r.Position
-            
-            for _,e in pairs(W.Enemies:GetChildren()) do
-                if e:FindFirstChild("HumanoidRootPart") then
-                    local dist=(e.HumanoidRootPart.Position-pos).Magnitude
-                    if dist<50 then table.insert(targets,e) end
-                end
-            end
-            
-            for _,plr in pairs(P:GetPlayers()) do
-                if plr~=self.p and plr.Character then
-                    local tc=plr.Character
-                    local tr=tc:FindFirstChild("HumanoidRootPart")
-                    if tr then
-                        local dist=(tr.Position-pos).Magnitude
-                        if dist<50 then table.insert(targets,tc) end
-                    end
-                end
-            end
-            
-            if #targets>0 and remotes.Attack then
-                pcall(function()
-                    remotes.Attack:FireServer(1)
-                    lastAttack=now
-                end)
-            end
-        end
-    end)
-end
-
-function D:InitializeHighlighter()
-    for plr,d in pairs(self.highlightCache) do
-        if d.H then d.H:Destroy() end
-        if d.B then d.B:Destroy() end
-    end
-    
-    self.highlightCache={}
-    
-    for _,plr in ipairs(P:GetPlayers()) do
-        if plr~=self.p then
-            self:onPlayerAdded(plr)
-        end
-    end
-    
-    table.insert(self.highlighterConnections,P.PlayerAdded:Connect(function(plr)
-        self:onPlayerAdded(plr)
-    end))
-    
-    table.insert(self.highlighterConnections,P.PlayerRemoving:Connect(function(plr)
-        self:onPlayerRemoving(plr)
-    end))
-    
-    R.Heartbeat:Connect(function()
-        if not self.highlighterSettings.Enabled then return end
-        for plr,hd in pairs(self.highlightCache) do
-            if not self:updateNameTag(hd) then
-                self.highlightCache[plr]=nil
-            end
-        end
-    end)
-end
-
-function D:createHPBar(model)
-    local bar=Instance.new("Frame")
-    bar.Name="HPBar"
-    bar.Size=UDim2.new(1.5,0,0,6)
-    bar.Position=UDim2.new(-0.25,0,0,-12)
-    bar.BackgroundColor3=Color3.fromRGB(60,60,60)
-    bar.BorderSizePixel=0
-    
-    local corner=Instance.new("UICorner")
-    corner.CornerRadius=UDim.new(0,3)
-    corner.Parent=bar
-    
-    local fill=Instance.new("Frame")
-    fill.Name="Fill"
-    fill.Size=UDim2.new(1,0,1,0)
-    fill.BackgroundColor3=Color3.fromRGB(0,255,0)
-    fill.BorderSizePixel=0
-    fill.Parent=bar
-    
-    local fCorner=Instance.new("UICorner")
-    fCorner.CornerRadius=UDim.new(0,3)
-    fCorner.Parent=fill
-    
-    return bar
-end
-
-function D:createHighlight(model,plr)
-    if not model or not model:IsA("Model") then return nil end
-    
-    local h=Instance.new("Highlight")
-    h.Name="PlayerHighlight"
-    h.Adornee=model
-    h.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
-    h.FillTransparency=1
-    h.OutlineColor=self.highlighterSettings.OutlineColor
-    h.OutlineTransparency=self.highlighterSettings.OutlineTransparency
-    h.Enabled=self.highlighterSettings.Enabled
-    
-    if self.highlighterSettings.TeamColor and plr.Team then
-        h.OutlineColor=plr.Team.TeamColor.Color
-    end
-    
-    h.Parent=model
-    
-    local b=Instance.new("BillboardGui")
-    b.Name="PlayerNameTag"
-    b.Adornee=model:FindFirstChild("Head") or model.PrimaryPart or model
-    b.Size=UDim2.new(0,200,0,50)
-    b.StudsOffset=Vector3.new(0,8.5,0)
-    b.AlwaysOnTop=true
-    b.MaxDistance=self.highlighterSettings.MaxDistance
-    b.Enabled=self.highlighterSettings.Enabled
-    
-    local t=Instance.new("TextLabel")
-    t.Name="NameText"
-    t.Size=UDim2.new(1,0,1,0)
-    t.BackgroundTransparency=1
-    t.TextColor3=self.highlighterSettings.NameTagColor
-    t.TextSize=self.highlighterSettings.NameTagSize
-    t.Font=self.highlighterSettings.NameTagFont
-    t.TextStrokeTransparency=0
-    t.TextStrokeColor3=self.highlighterSettings.NameTagOutlineColor
-    t.Text=plr.Name
-    t.TextYAlignment=Enum.TextYAlignment.Center
-    t.Parent=b
-    b.Parent=model
-    
-    local hpBar
-    if self.highlighterSettings.ShowHPBar then
-        hpBar=self:createHPBar(b)
-        hpBar.Parent=b
-        t.Position=UDim2.new(0,0,0,10)
-        t.Size=UDim2.new(1,0,0,20)
-    end
-    
-    return {H=h,B=b,P=plr,M=model,HPBar=hpBar}
-end
-
-function D:updateNameTag(hd)
-    if not hd or not hd.M or not hd.M.PrimaryPart then return false end
-    local plr=hd.P
-    local m=hd.M
-    local b=hd.B
-    local h=hd.H
-    
-    if not plr or plr.Parent~=P or not m.Parent then
-        if h then h:Destroy() end
-        if b then b:Destroy() end
-        return false
-    end
-    
-    local c=self.p.Character
-    if not c or not c.PrimaryPart then return true end
-    local dist=(c.PrimaryPart.Position-m.PrimaryPart.Position).Magnitude
-    
-    if dist>self.highlighterSettings.MaxDistance then
-        h.Enabled=false
-        b.Enabled=false
-        return true
-    end
-    
-    h.Enabled=self.highlighterSettings.Enabled
-    b.Enabled=self.highlighterSettings.Enabled
-    
-    local hpText=""
-    local hpPercent=1
-    local hum=m:FindFirstChildOfClass("Humanoid")
-    
-    if hum then
-        local hp=math.floor(hum.Health)
-        local max=math.floor(hum.MaxHealth)
-        hpText=string.format("[%d/%d]",hp,max)
-        hpPercent=math.max(0,math.min(1,hum.Health/hum.MaxHealth))
-    else
-        local data=m:FindFirstChild("Data")
-        if data then
-            local lvl=data:FindFirstChild("Level")
-            if lvl then hpText=string.format("[LVL:%d]",lvl.Value) end
-        end
-    end
-    
-    if b and b.NameText then
-        if self.highlighterSettings.ShowDistance then
-            b.NameText.Text=string.format("%s [%dm]\n%s", plr.Name, math.floor(dist), hpText)
-        else
-            b.NameText.Text=string.format("%s\n%s",plr.Name,hpText)
-        end
-    end
-    
-    if hd.HPBar then
-        hd.HPBar.Fill.Size=UDim2.new(hpPercent,0,1,0)
-    end
-    
-    if self.highlighterSettings.TeamColor and plr.Team then
-        h.OutlineColor=plr.Team.TeamColor.Color
-    end
-    
-    return true
-end
-
-function D:onPlayerAdded(plr)
-    if plr==self.p then return end
-    
-    local function charAdded(char)
-        if not char then return end
-        task.wait(0.5)
-        if char and char:IsA("Model") then
-            if self.highlightCache[plr] then
-                local old=self.highlightCache[plr]
-                if old.H then old.H:Destroy() end
-                if old.B then old.B:Destroy() end
-            end
-            local hd=self:createHighlight(char,plr)
-            if hd then self.highlightCache[plr]=hd end
-        end
-    end
-    
-    local conn=plr.CharacterAdded:Connect(charAdded)
-    table.insert(self.highlighterConnections,conn)
-    
-    if plr.Character then charAdded(plr.Character) end
-    
-    local remConn=plr.AncestryChanged:Connect(function(_,par)
-        if not par then
-            if self.highlightCache[plr] then
-                local d=self.highlightCache[plr]
-                if d.H then d.H:Destroy() end
-                if d.B then d.B:Destroy() end
-                self.highlightCache[plr]=nil
-            end
-        end
-    end)
-    table.insert(self.highlighterConnections,remConn)
-end
-
-function D:onPlayerRemoving(plr)
-    if self.highlightCache[plr] then
-        local d=self.highlightCache[plr]
-        if d.H then d.H:Destroy() end
-        if d.B then d.B:Destroy() end
-        self.highlightCache[plr]=nil
-    end
-end
-
-function D:SetupConnections()
-    table.insert(self.connections,R.RenderStepped:Connect(function(dt)
-        self:UpdateFPS(dt)
-        self.lastUpdate=self.lastUpdate+dt
-        if self.lastUpdate>=self.updateInterval then
-            self:UpdatePing()
-            self:UpdateInfo()
-            self.lastUpdate=0
+function D:SC()
+    table.insert(self.cx,R.RenderStepped:Connect(function(d)
+        self:UF(d)
+        self.u=self.u+d
+        if self.u>=self.i then
+            self:UP()
+            self:UI()
+            self.u=0
         end
     end))
     
-    table.insert(self.connections,U.InputBegan:Connect(function(i,pr)
+    table.insert(self.cx,U.InputBegan:Connect(function(i,pr)
         if not pr and i.KeyCode==Enum.KeyCode.F5 then
-            self.showHUD=not self.showHUD
-            self.sg.Enabled=self.showHUD
+            self.s=not self.s
+            self.sg.Enabled=self.s
         end
     end))
 end
 
-function D:UpdateFPS(dt)
-    self.fpsTime=self.fpsTime+dt
-    self.fpsCounter=self.fpsCounter+1
-    if self.fpsTime>=1 then
-        self.fps=math.floor(self.fpsCounter/self.fpsTime)
-        self.fpsCounter=0
-        self.fpsTime=0
-        self.secs[1].v.Text=tostring(self.fps)
+function D:UF(d)
+    self.t=self.t+d
+    self.c=self.c+1
+    if self.t>=1 then
+        self.f=math.floor(self.c/self.t)
+        self.c=0
+        self.t=0
+        self.sx[1].v.Text=tostring(self.f)
     end
 end
 
-function D:UpdatePing()
-    local suc,ping=pcall(function()
+function D:UP()
+    local su,pi=pcall(function()
         return math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
     end)
-    self.secs[2].v.Text=(suc and ping or -1).."ms"
+    self.sx[2].v.Text=(su and pi or -1).."ms"
 end
 
-function D:UpdateInfo()
-    if self.showGameTime then
-        local el=os.clock()-self.startTime
+function D:UI()
+    if self.g then
+        local el=os.clock()-self.st
         local m=math.floor(el/60)
         local s=math.floor(el%60)
-        self.secs[3].v.Text=string.format("%02d:%02d",m,s)
+        self.sx[3].v.Text=string.format("%02d:%02d",m,s)
     else
-        local cam=W.CurrentCamera
-        if cam then
-            local l=cam.CFrame.LookVector
+        local ca=W.CurrentCamera
+        if ca then
+            local l=ca.CFrame.LookVector
             local p=math.deg(math.asin(-l.Y))
             local y=math.deg(math.atan2(-l.X,-l.Z))
-            self.secs[3].v.Text=string.format("%.0f°,%.0f°",y%360,p)
+            self.sx[3].v.Text=string.format("%.0f°,%.0f°",y%360,p)
         else
-            self.secs[3].v.Text="CV:N/A"
+            self.sx[3].v.Text="CV:N/A"
         end
     end
 end
 
 function D:Destroy()
-    for _,c in ipairs(self.connections) do
+    for _,c in ipairs(self.cx) do
         c:Disconnect()
     end
     
-    for _,c in ipairs(self.highlighterConnections) do
+    for _,c in ipairs(self.hx) do
         c:Disconnect()
     end
     
-    for plr,d in pairs(self.highlightCache) do
+    for p,d in pairs(self.hc) do
         if d.H then d.H:Destroy() end
         if d.B then d.B:Destroy() end
     end
     
-    for _,esp in pairs(self.fruitESP) do
-        if esp.h then esp.h:Destroy() end
-        if esp.b then esp.b:Destroy() end
+    self.hc={}
+    
+    if self.sg then
+        self.sg:Destroy()
     end
-    
-    for _,p in pairs(self.platforms) do
-        if p then p:Destroy() end
-    end
-    
-    self.highlightCache={}
-    self.fruitESP={}
-    self.platforms={}
-    
-    if self.sg then self.sg:Destroy() end
 end
 
 return D.new()
