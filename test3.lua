@@ -31,7 +31,6 @@ function D.new()
     self.hlCache={}
     self.fruitESP=false
     self.speedEnabled=false
-    self.speedAmount=100
     self.curPlatform=nil
     self.fruitHLs={}
     
@@ -59,27 +58,8 @@ function D.new()
     self:InitializeFruitBtn()
     self:InitializeSpeedBtn()
     self:InitializeFastAttack()
-    self:InitializeSpeedBoost()
     
     return self
-end
-
-function D:InitializeSpeedBoost()
-    R.Heartbeat:Connect(function()
-        if not self.speedEnabled then return end
-        local c=self.p.Character
-        if not c then return end
-        local h=c:FindFirstChild("Humanoid")
-        if not h then return end
-        
-        h.WalkSpeed=self.speedAmount
-        
-        for _,v in pairs(c:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.CanCollide=false
-            end
-        end
-    end)
 end
 
 function D:InitializeSaveBtn()
@@ -174,9 +154,36 @@ function D:InitializeSpeedBtn()
         self.speedEnabled=not self.speedEnabled
         b.Text=self.speedEnabled and "SPEED ON" or "SPEED OFF"
         s.Color=self.speedEnabled and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,50,50)
+        
+        if self.speedEnabled then
+            self:StartSpeed()
+        else
+            self:StopSpeed()
+        end
     end)
     
     b.Parent=self.sg
+end
+
+function D:StartSpeed()
+    R.Heartbeat:Connect(function()
+        if not self.speedEnabled then return end
+        local c=self.p.Character
+        if not c then return end
+        local h=c:FindFirstChild("Humanoid")
+        if not h then return end
+        
+        h.WalkSpeed=100
+    end)
+end
+
+function D:StopSpeed()
+    local c=self.p.Character
+    if not c then return end
+    local h=c:FindFirstChild("Humanoid")
+    if not h then return end
+    
+    h.WalkSpeed=16
 end
 
 function D:SavePosition()
@@ -191,11 +198,10 @@ function D:SavePosition()
     if not h then return end
     
     local o=h.Position
-    local nh=3000
-    local np=o+Vector3.new(0,nh,0)
+    local np=o+Vector3.new(0,100,0)
     
     local d=(np-o).Magnitude
-    local sp=350
+    local sp=300
     
     for _,v in pairs(c:GetDescendants()) do
         if v:IsA("BasePart") then v.CanCollide=false end
@@ -208,25 +214,24 @@ function D:SavePosition()
     
     local p=Instance.new("Part")
     p.Name="SavePlatform"
-    p.Size=Vector3.new(100,5,100)
-    p.Position=o+Vector3.new(0,-10,0)
+    p.Size=Vector3.new(100,1,100)
+    p.Position=o
     p.Anchored=true
     p.CanCollide=true
-    p.Transparency=0.4
+    p.Transparency=0.3
     p.Color=Color3.fromRGB(85,170,255)
-    p.Material=Enum.Material.Neon
     p.Parent=W
     
     self.curPlatform=p
     
     task.wait(0.1)
-    h.CFrame=CFrame.new(p.Position+Vector3.new(0,10,0))
+    h.CFrame=CFrame.new(o+Vector3.new(0,5,0))
 end
 
 function D:StartFruitESP()
     task.spawn(function()
         while self.fruitESP do
-            task.wait(0.5)
+            task.wait(1)
             
             for _,h in pairs(self.fruitHLs) do
                 if h then h:Destroy() end
@@ -238,12 +243,10 @@ function D:StartFruitESP()
             local h=c:FindFirstChild("HumanoidRootPart")
             if not h then continue end
             
-            for _,o in pairs(W:GetChildren()) do
-                if o.Name=="Fruit" or (o:IsA("Model") and o:FindFirstChild("Handle")) then
-                    local ha=o:FindFirstChild("Handle") or o.PrimaryPart
-                    if not ha then continue end
-                    
-                    local d=(h.Position-ha.Position).Magnitude
+            for _,o in pairs(W:GetDescendants()) do
+                if o.Name=="Fruit" or (o:IsA("MeshPart") and o.Parent and o.Parent.Name=="Fruit") then
+                    local pos=o.Position
+                    local d=(h.Position-pos).Magnitude
                     
                     if d>300 then
                         local hl=Instance.new("Highlight")
@@ -251,51 +254,21 @@ function D:StartFruitESP()
                         hl.Adornee=o
                         hl.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
                         hl.FillColor=Color3.fromRGB(255,215,0)
-                        hl.FillTransparency=0.7
+                        hl.FillTransparency=0.5
                         hl.OutlineColor=Color3.fromRGB(255,255,0)
                         hl.OutlineTransparency=0
                         hl.Enabled=true
                         hl.Parent=o
                         
-                        local bb=Instance.new("BillboardGui")
-                        bb.Name="FruitInfo"
-                        bb.Adornee=ha
-                        bb.Size=UDim2.new(0,200,0,50)
-                        bb.StudsOffset=Vector3.new(0,5,0)
-                        bb.AlwaysOnTop=true
-                        bb.MaxDistance=5000
-                        
-                        local tl=Instance.new("TextLabel")
-                        tl.Name="FruitText"
-                        tl.Size=UDim2.new(1,0,1,0)
-                        tl.BackgroundTransparency=1
-                        tl.TextColor3=Color3.fromRGB(255,255,0)
-                        tl.TextSize=12
-                        tl.Font=Enum.Font.GothamBold
-                        tl.TextStrokeTransparency=0
-                        tl.TextStrokeColor3=Color3.fromRGB(0,0,0)
-                        tl.Text=string.format("{ ??? } | %dm",math.floor(d))
-                        tl.Parent=bb
-                        bb.Parent=o
-                        
                         table.insert(self.fruitHLs,hl)
-                        table.insert(self.fruitHLs,bb)
                     else
-                        task.spawn(function()
-                            local hrp=c:FindFirstChild("HumanoidRootPart")
-                            if not hrp then return end
-                            
-                            while o.Parent and (hrp.Position-ha.Position).Magnitude>10 and self.fruitESP do
-                                local nd=(hrp.Position-ha.Position).Magnitude
-                                local sp=200
-                                if nd<100 then sp=100 end
-                                
-                                local t=T:Create(hrp,TweenInfo.new(nd/sp,Enum.EasingStyle.Linear),
-                                    {CFrame=CFrame.new(ha.Position)})
-                                t:Play()
-                                task.wait(nd/sp)
-                            end
-                        end)
+                        local hrp=c:FindFirstChild("HumanoidRootPart")
+                        if not hrp then continue end
+                        
+                        local t=T:Create(hrp,TweenInfo.new(1,Enum.EasingStyle.Linear),
+                            {CFrame=CFrame.new(pos)})
+                        t:Play()
+                        break
                     end
                 end
             end
@@ -312,7 +285,7 @@ end
 
 function D:InitializeFastAttack()
     task.spawn(function()
-        while task.wait() do
+        while task.wait(0.05) do
             local c=self.p.Character
             if not c then continue end
             local h=c:FindFirstChild("HumanoidRootPart")
@@ -335,31 +308,17 @@ function D:InitializeFastAttack()
                 end
             end
             
-            for _,pl in pairs(P:GetPlayers()) do
-                if pl~=self.p and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart") then
-                    local tc=pl.Character
-                    local d=(tc.HumanoidRootPart.Position-p).Magnitude
-                    if d<50 and tc:FindFirstChildOfClass("Humanoid").Health>0 then
-                        if not self.p.Team or not pl.Team or self.p.Team~=pl.Team then
-                            table.insert(ts,tc)
+            if #ts>0 then
+                local net=S.Modules.Net
+                if net then
+                    local re=net:FindFirstChild("RE")
+                    if re then
+                        local ra=re:FindFirstChild("RegisterAttack")
+                        if ra then
+                            ra:FireServer(1)
                         end
                     end
                 end
-            end
-            
-            if #ts>0 then
-                local suc,ar=pcall(function()
-                    return require(S.Modules.Net):RemoteEvent("RegisterAttack")
-                end)
-                
-                if suc and ar then
-                    for i=1,3 do
-                        pcall(function() ar:FireServer(1) end)
-                        task.wait(0.01)
-                    end
-                end
-                
-                task.wait(0.05)
             end
         end
     end)
@@ -632,37 +591,37 @@ function D:Initialize()
     local w=100
     
     for i=1,3 do
-        local sf=Instance.new("Frame")
-        sf.Name="Sec"..i
-        sf.Size=UDim2.new(0,w,1,0)
-        sf.Position=UDim2.new(0,(i-1)*w,0,0)
-        sf.BackgroundTransparency=1
-        sf.BorderSizePixel=0
-        sf.Parent=self.mf
+        local f=Instance.new("Frame")
+        f.Name="Sec"..i
+        f.Size=UDim2.new(0,w,1,0)
+        f.Position=UDim2.new(0,(i-1)*w,0,0)
+        f.BackgroundTransparency=1
+        f.BorderSizePixel=0
+        f.Parent=self.mf
         
-        local tl=Instance.new("TextLabel")
-        tl.Name="Title"
-        tl.Size=UDim2.new(1,0,0,16)
-        tl.Position=UDim2.new(0,0,0,4)
-        tl.BackgroundTransparency=1
-        tl.TextColor3=Color3.fromRGB(180,180,180)
-        tl.TextSize=11
-        tl.Font=Enum.Font.GothamMedium
-        tl.Text=i==1 and "FPS" or (i==2 and "PING" or "INFO")
-        tl.TextXAlignment=Enum.TextXAlignment.Center
-        tl.Parent=sf
+        local t=Instance.new("TextLabel")
+        t.Name="Title"
+        t.Size=UDim2.new(1,0,0,16)
+        t.Position=UDim2.new(0,0,0,4)
+        t.BackgroundTransparency=1
+        t.TextColor3=Color3.fromRGB(180,180,180)
+        t.TextSize=11
+        t.Font=Enum.Font.GothamMedium
+        t.Text=i==1 and "FPS" or (i==2 and "PING" or "INFO")
+        t.TextXAlignment=Enum.TextXAlignment.Center
+        t.Parent=f
         
-        local vl=Instance.new("TextLabel")
-        vl.Name="Value"
-        vl.Size=UDim2.new(1,0,0,18)
-        vl.Position=UDim2.new(0,0,0,18)
-        vl.BackgroundTransparency=1
-        vl.TextColor3=Color3.fromRGB(255,255,255)
-        vl.TextSize=13
-        vl.Font=Enum.Font.GothamBold
-        vl.Text=i==1 and "0" or (i==2 and "0ms" or "CV:0")
-        vl.TextXAlignment=Enum.TextXAlignment.Center
-        vl.Parent=sf
+        local v=Instance.new("TextLabel")
+        v.Name="Value"
+        v.Size=UDim2.new(1,0,0,18)
+        v.Position=UDim2.new(0,0,0,18)
+        v.BackgroundTransparency=1
+        v.TextColor3=Color3.fromRGB(255,255,255)
+        v.TextSize=13
+        v.Font=Enum.Font.GothamBold
+        v.Text=i==1 and "0" or (i==2 and "0ms" or "CV:0")
+        v.TextXAlignment=Enum.TextXAlignment.Center
+        v.Parent=f
         
         if i==3 then
             local b=Instance.new("TextButton")
@@ -671,7 +630,7 @@ function D:Initialize()
             b.Position=UDim2.new(0,0,0,0)
             b.BackgroundTransparency=1
             b.Text=""
-            b.Parent=sf
+            b.Parent=f
             
             table.insert(self.connections,b.MouseButton1Click:Connect(function()
                 self.showGameTime=not self.showGameTime
@@ -687,13 +646,13 @@ function D:Initialize()
             d.BackgroundColor3=Color3.fromRGB(255,255,255)
             d.BackgroundTransparency=0.9
             d.BorderSizePixel=0
-            d.Parent=sf
+            d.Parent=f
         end
         
         self.secs[i]={
-            f=sf,
-            t=tl,
-            v=vl
+            f=f,
+            t=t,
+            v=v
         }
     end
     
